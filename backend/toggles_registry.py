@@ -38,7 +38,7 @@ TOGGLES = [
     "apple_silicon_only": True,
     "cmd_off": "sudo tmutil disable",
     "cmd_on": "sudo tmutil enable",
-    "cmd_status": "tmutil status 2>/dev/null | grep -q '\"Running\" = 1' && echo 1 || (tmutil status 2>/dev/null | grep -q 'Enabled = 1' && echo 1 || echo 0)",
+    "cmd_status": "tmutil status 2>/dev/null | grep -qE '(Enabled|Running) = 1' && echo 1 || echo 0",
   },
 
   {
@@ -108,7 +108,7 @@ TOGGLES = [
     "apple_silicon_only": True,
     "cmd_off": "sudo softwareupdate --schedule off",
     "cmd_on": "sudo softwareupdate --schedule on",
-    "cmd_status": "sudo softwareupdate --schedule 2>/dev/null | grep -q 'Automatic check is on' && echo 1 || echo 0",
+    "cmd_status": "out=$(sudo softwareupdate --schedule 2>/dev/null); echo $out | grep -q 'Automatic check is on' && echo 1 || echo 0",
   },
 
   {
@@ -176,7 +176,7 @@ TOGGLES = [
     "apple_silicon_only": True,
     "cmd_off": "defaults write com.apple.mail.plist InboxViewerAttributes -dict-add FetchInterval -1",
     "cmd_on": "defaults write com.apple.mail.plist InboxViewerAttributes -dict-add FetchInterval 5",
-    "cmd_status": "val=$(defaults read com.apple.mail InboxViewerAttributes 2>/dev/null | grep FetchInterval | awk '{print $3}' | tr -d ';'); [ \"$val\" = '-1' ] && echo 0 || echo 1",
+    "cmd_status": "val=$(defaults read com.apple.mail InboxViewerAttributes 2>/dev/null | grep -o 'FetchInterval = [^;]*' | awk '{print $3}'); [ \"$val\" = '-1' ] && echo 0 || echo 1",
   },
 
   {

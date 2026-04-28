@@ -40,9 +40,22 @@ def _make_executor(target: Target) -> SSHExecutor:
 
 
 async def _read_live_state(executor: SSHExecutor, toggle: dict) -> str:
-    """Run cmd_status; returns 'on' or 'off'. Defaults to 'unknown' on error."""
-    stdout, _, code = await async_run(executor, toggle["cmd_status"])
-    val = stdout.strip()
+    """Run cmd_status; returns 'on' or 'off'. Defaults to 'unknown' on error.
+
+    Accepts multi-line output — checks the last non-empty line for '1' or '0'.
+    This handles compound commands like:
+        tmutil status ... | grep ... && echo 1 || echo 0
+    which may emit extra lines before the final echo.
+    """
+    try:
+        stdout, stderr, code = await async_run(executor, toggle["cmd_status"])
+    except Exception:
+        return "unknown"
+
+    # Find the last non-empty line (strips CR from Windows-style SSH output too)
+    lines = [ln.strip().strip("\r") for ln in stdout.splitlines() if ln.strip()]
+    val = lines[-1] if lines else ""
+
     if val == "1":
         return "on"
     if val == "0":
