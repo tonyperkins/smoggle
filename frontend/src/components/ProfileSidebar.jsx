@@ -64,7 +64,7 @@ export default function ProfileSidebar({ targetId, onApplied }) {
           profileName={selected}
           targetId={targetId}
           onClose={() => setSelected(null)}
-          onApplied={() => { setSelected(null); onApplied?.() }}
+          onApplied={() => { onApplied?.() }}
         />
       )}
     </>
