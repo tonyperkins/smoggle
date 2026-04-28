@@ -71,12 +71,12 @@ async def test_sudo(body: TestSudoBody, session: Session = Depends(get_session))
 
     # Test each required binary with sudo -n (non-interactive — fails if password needed)
     required_cmds = [
-        ("mdutil",          "sudo -n /usr/sbin/mdutil -h 2>&1; echo $?"),
-        ("tmutil",          "sudo -n /usr/bin/tmutil help 2>&1; echo $?"),
-        ("pmset",           "sudo -n /usr/bin/pmset -g 2>&1 | head -1; echo $?"),
-        ("softwareupdate",  "sudo -n /usr/sbin/softwareupdate --schedule 2>&1; echo $?"),
-        ("launchctl",       "sudo -n /bin/launchctl list 2>&1 | head -1; echo $?"),
-        ("defaults",        "sudo -n /usr/bin/defaults read NSGlobalDomain AppleInterfaceStyle 2>&1; echo $?"),
+        ("mdutil",         "sudo -n mdutil -h 2>&1; echo $?"),
+        ("tmutil",         "sudo -n tmutil help 2>&1; echo $?"),
+        ("pmset",          "sudo -n pmset -g 2>&1 | head -1; echo $?"),
+        ("softwareupdate", "sudo -n softwareupdate --schedule 2>&1; echo $?"),
+        ("launchctl",      "sudo -n launchctl list 2>&1 | head -1; echo $?"),
+        ("defaults",       "sudo -n defaults read NSGlobalDomain AppleInterfaceStyle 2>&1; echo $?"),
     ]
 
     results = []
