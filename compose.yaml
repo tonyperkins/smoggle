@@ -7,7 +7,7 @@ services:
       - "7420:7420"
     volumes:
       - smoggle_data:/app/data
-      - ~/.ssh:/root/.ssh:ro
+      - /home/asperkins65/.ssh:/root/.ssh:ro
     environment:
       - DEPLOY_MODE=remote
     restart: unless-stopped
