@@ -26,10 +26,13 @@ export function useToggles(targetId) {
   }, [fetchToggles])
 
   const applyToggle = useCallback(async (toggleId, newState) => {
-    // Optimistic update
-    setToggles(prev =>
-      prev.map(t => t.id === toggleId ? { ...t, live_state: newState, optimistic: true } : t)
-    )
+    // Capture original state before optimistic update so we can revert exactly
+    let originalState = null
+    setToggles(prev => {
+      const t = prev.find(t => t.id === toggleId)
+      if (t) originalState = t.live_state
+      return prev.map(t => t.id === toggleId ? { ...t, live_state: newState, optimistic: true } : t)
+    })
     try {
       const res = await fetch(`/api/toggles/${toggleId}/apply`, {
         method: 'POST',
@@ -46,9 +49,9 @@ export function useToggles(targetId) {
       )
       return { success: true }
     } catch (err) {
-      // Revert optimistic update
+      // Revert to original state captured before the optimistic update
       setToggles(prev =>
-        prev.map(t => t.id === toggleId ? { ...t, live_state: newState === 'on' ? 'off' : 'on', optimistic: false } : t)
+        prev.map(t => t.id === toggleId ? { ...t, live_state: originalState, optimistic: false } : t)
       )
       return { success: false, error: err.message }
     }

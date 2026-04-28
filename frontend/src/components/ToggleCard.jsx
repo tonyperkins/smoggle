@@ -13,7 +13,7 @@ function impactMeta(impact = '') {
   if (impact.startsWith('HIGH'))     return { label: 'HIGH',     cls: 'bg-red-950   border-red-800   text-red-300'   }
   if (impact.startsWith('CRITICAL')) return { label: 'CRITICAL', cls: 'bg-red-950   border-red-800   text-red-300'   }
   if (impact.startsWith('LOW-MED') || impact.startsWith('LOW-MEDIUM'))
-                                     return { label: 'LOW-MED',  cls: 'bg-amber-950 border-amber-800 text-amber-300' }
+                                     return { label: 'LOW‑MED', cls: 'bg-amber-950 border-amber-800 text-amber-300' }
   if (impact.startsWith('MEDIUM'))   return { label: 'MEDIUM',   cls: 'bg-amber-950 border-amber-800 text-amber-300' }
   if (impact.startsWith('POSITIVE')) return { label: 'POSITIVE', cls: 'bg-green-950 border-green-800 text-green-300' }
   if (impact.startsWith('LOW'))      return { label: 'LOW',      cls: 'bg-blue-950  border-blue-800  text-blue-300'  }
@@ -75,8 +75,9 @@ export default function ToggleCard({ toggle, onApply }) {
   const [pending, setPending] = useState(false)
   const [toast, setToast] = useState(null)
 
-  const isOn = toggle.live_state === 'on'
-  const isUnknown = toggle.live_state === 'unknown'
+  const liveState = toggle.live_state
+  const isOn = liveState === 'on'
+  const isUnknown = !liveState || liveState === 'unknown' || liveState === 'error'
   const impact = impactMeta(toggle.impact ?? '')
 
   async function handleToggle() {
@@ -98,12 +99,14 @@ export default function ToggleCard({ toggle, onApply }) {
     ].join(' ')}>
 
       {/* ── Top row: name + toggle switch ── */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-slate-100 text-sm leading-tight">{toggle.name}</p>
           <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{toggle.description}</p>
         </div>
-        <ToggleSwitch isOn={isOn} pending={pending} onToggle={handleToggle} name={toggle.name} />
+        <div className="flex-shrink-0">
+          <ToggleSwitch isOn={isOn} pending={pending || isUnknown} onToggle={handleToggle} name={toggle.name} />
+        </div>
       </div>
 
       {/* ── Badge row ── */}
@@ -112,11 +115,11 @@ export default function ToggleCard({ toggle, onApply }) {
         {/* ON / OFF state chip */}
         <span className={[
           'text-xs font-bold px-2 py-0.5 rounded border',
-          isUnknown ? 'bg-slate-700 border-slate-600 text-slate-500'
+          isUnknown ? 'bg-slate-700 border-slate-600 text-slate-500 italic'
             : isOn   ? 'bg-green-950 border-green-700 text-green-300'
                      : 'bg-slate-700 border-slate-600 text-slate-400',
         ].join(' ')}>
-          {isUnknown ? '?' : isOn ? 'ON' : 'OFF'}
+          {isUnknown ? '—' : isOn ? 'ON' : 'OFF'}
         </span>
 
         {/* Impact badge */}
