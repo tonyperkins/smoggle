@@ -84,9 +84,10 @@ async def apply_profile(
     for toggle, desired_state in work:
         cmd = toggle["cmd_on"] if desired_state == "on" else toggle["cmd_off"]
 
-        # Read old state
+        # Read old state — use last non-empty line (handles multi-line cmd_status output)
         old_stdout, _, _ = await async_run(executor, toggle["cmd_status"])
-        old_val = old_stdout.strip()
+        old_lines = [ln.strip().strip("\r") for ln in old_stdout.splitlines() if ln.strip()]
+        old_val = old_lines[-1] if old_lines else ""
         old_state = "on" if old_val == "1" else "off" if old_val == "0" else "unknown"
 
         stdout, stderr, exit_code = await async_run(executor, cmd)

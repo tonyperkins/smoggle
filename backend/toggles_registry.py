@@ -261,9 +261,9 @@ TOGGLES = [
     "restart_note": "",
     "profiles": ["max", "hyper"],
     "apple_silicon_only": True,
-    "cmd_off": "sudo pmset -a highpowermode 0",
-    "cmd_on": "sudo pmset -a highpowermode 1",
-    "cmd_status": "pmset -g 2>/dev/null | grep -q 'highpowermode.*1' && echo 1 || echo 0",
+    "cmd_off": "pmset -g 2>/dev/null | grep -q highpowermode && sudo pmset -a highpowermode 0 || echo 'unsupported'",
+    "cmd_on": "pmset -g 2>/dev/null | grep -q highpowermode && sudo pmset -a highpowermode 1 || echo 'unsupported'",
+    "cmd_status": "pmset -g 2>/dev/null | grep -q 'highpowermode' && { pmset -g 2>/dev/null | grep -q 'highpowermode.*1' && echo 1 || echo 0; } || echo 0",
   },
 
   # ── DANGER ────────────────────────────────────────────────────────────
