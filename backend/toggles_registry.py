@@ -72,9 +72,9 @@ TOGGLES = [
     "restart_note": "",
     "profiles": ["performance", "max", "hyper"],
     "apple_silicon_only": True,
-    "cmd_off": "launchctl unload -w /System/Library/LaunchAgents/com.apple.bird.plist 2>/dev/null; launchctl unload -w /System/Library/LaunchAgents/com.apple.iCloudDrive.appleevents.plist 2>/dev/null; echo done",
-    "cmd_on": "launchctl load -w /System/Library/LaunchAgents/com.apple.bird.plist 2>/dev/null; launchctl load -w /System/Library/LaunchAgents/com.apple.iCloudDrive.appleevents.plist 2>/dev/null; echo done",
-    "cmd_status": "launchctl list 2>/dev/null | grep -q 'com.apple.bird' && echo 1 || echo 0",
+    "cmd_off": "defaults write com.apple.bird.plist syncedDesktop -bool false 2>/dev/null; defaults write com.apple.bird.plist syncedDocuments -bool false 2>/dev/null; echo done",
+    "cmd_on": "defaults write com.apple.bird.plist syncedDesktop -bool true 2>/dev/null; defaults write com.apple.bird.plist syncedDocuments -bool true 2>/dev/null; echo done",
+    "cmd_status": "val=$(defaults read com.apple.bird.plist syncedDesktop 2>/dev/null); [ \"$val\" = '0' ] && echo 0 || echo 1",
   },
 
   {
@@ -89,9 +89,9 @@ TOGGLES = [
     "restart_note": "Log out and back in for Siri to fully stop background activity",
     "profiles": ["performance", "max", "hyper"],
     "apple_silicon_only": True,
-    "cmd_off": "launchctl unload -w /System/Library/LaunchAgents/com.apple.Siri.agent.plist 2>/dev/null; launchctl unload -w /System/Library/LaunchAgents/com.apple.assistant_service.plist 2>/dev/null; echo done",
-    "cmd_on": "launchctl load -w /System/Library/LaunchAgents/com.apple.Siri.agent.plist 2>/dev/null; launchctl load -w /System/Library/LaunchAgents/com.apple.assistant_service.plist 2>/dev/null; echo done",
-    "cmd_status": "launchctl list 2>/dev/null | grep -q 'com.apple.Siri.agent' && echo 1 || echo 0",
+    "cmd_off": "defaults write com.apple.assistant.support 'Assistant Enabled' -bool false",
+    "cmd_on": "defaults write com.apple.assistant.support 'Assistant Enabled' -bool true",
+    "cmd_status": "val=$(defaults read com.apple.assistant.support 'Assistant Enabled' 2>/dev/null); [ \"$val\" = '0' ] && echo 0 || echo 1",
   },
 
   {
@@ -157,9 +157,9 @@ TOGGLES = [
     "restart_note": "",
     "profiles": ["max", "hyper"],
     "apple_silicon_only": True,
-    "cmd_off": "sudo launchctl unload /System/Library/LaunchDaemons/com.apple.locationd.plist 2>/dev/null; echo done",
-    "cmd_on": "sudo launchctl load /System/Library/LaunchDaemons/com.apple.locationd.plist 2>/dev/null; echo done",
-    "cmd_status": "sudo launchctl list 2>/dev/null | grep -q 'com.apple.locationd' && echo 1 || echo 0",
+    "cmd_off": "sudo defaults write /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled -bool false 2>/dev/null && sudo pkill -HUP locationd 2>/dev/null; echo done",
+    "cmd_on": "sudo defaults write /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled -bool true 2>/dev/null && sudo pkill -HUP locationd 2>/dev/null; echo done",
+    "cmd_status": "val=$(sudo defaults read /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled 2>/dev/null); [ \"$val\" = '0' ] && echo 0 || echo 1",
   },
 
   {
@@ -191,9 +191,9 @@ TOGGLES = [
     "restart_note": "",
     "profiles": ["performance", "max", "hyper"],
     "apple_silicon_only": True,
-    "cmd_off": "sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.analyticsd.plist 2>/dev/null; echo done",
-    "cmd_on": "sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.analyticsd.plist 2>/dev/null; echo done",
-    "cmd_status": "sudo launchctl list 2>/dev/null | grep -q 'com.apple.analyticsd' && echo 1 || echo 0",
+    "cmd_off": "defaults write com.apple.SubmitDiagInfo AutoSubmit -bool false; defaults write com.apple.assistant.support 'Siri Data Sharing Opt-In Status' -int 2; echo done",
+    "cmd_on": "defaults write com.apple.SubmitDiagInfo AutoSubmit -bool true; echo done",
+    "cmd_status": "val=$(defaults read com.apple.SubmitDiagInfo AutoSubmit 2>/dev/null); [ \"$val\" = '0' ] && echo 0 || echo 1",
   },
 
   {
@@ -280,9 +280,9 @@ TOGGLES = [
     "restart_note": "",
     "profiles": ["hyper"],
     "apple_silicon_only": True,
-    "cmd_off": "launchctl unload -w /System/Library/LaunchAgents/com.apple.notificationcenterui.plist 2>/dev/null; echo done",
-    "cmd_on": "launchctl load -w /System/Library/LaunchAgents/com.apple.notificationcenterui.plist 2>/dev/null; echo done",
-    "cmd_status": "launchctl list 2>/dev/null | grep -q 'com.apple.notificationcenterui' && echo 1 || echo 0",
+    "cmd_off": "defaults write com.apple.notificationcenterui doNotDisturb -bool true; defaults write com.apple.ncprefs dnd_prefs -dict-add userPref -int 1; echo done",
+    "cmd_on": "defaults write com.apple.notificationcenterui doNotDisturb -bool false; defaults write com.apple.ncprefs dnd_prefs -dict-add userPref -int 0; echo done",
+    "cmd_status": "val=$(defaults read com.apple.notificationcenterui doNotDisturb 2>/dev/null); [ \"$val\" = '1' ] && echo 0 || echo 1",
   },
 
   {
@@ -297,9 +297,9 @@ TOGGLES = [
     "restart_note": "",
     "profiles": ["hyper"],
     "apple_silicon_only": True,
-    "cmd_off": "sudo launchctl unload /System/Library/LaunchDaemons/com.apple.mDNSResponder.plist 2>/dev/null; echo done",
-    "cmd_on": "sudo launchctl load /System/Library/LaunchDaemons/com.apple.mDNSResponder.plist 2>/dev/null; echo done",
-    "cmd_status": "sudo launchctl list 2>/dev/null | grep -q 'com.apple.mDNSResponder' && echo 1 || echo 0",
+    "cmd_off": "sudo defaults write /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -bool true && sudo pkill -HUP mDNSResponder 2>/dev/null; echo done",
+    "cmd_on": "sudo defaults delete /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements 2>/dev/null; sudo pkill -HUP mDNSResponder 2>/dev/null; echo done",
+    "cmd_status": "val=$(sudo defaults read /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements 2>/dev/null); [ \"$val\" = '1' ] && echo 0 || echo 1",
   },
 
 ]
