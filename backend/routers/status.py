@@ -19,6 +19,9 @@ from backend.executor import SSHExecutor, async_run
 
 router = APIRouter(prefix="/api/status", tags=["status"])
 
+# Active SSE client count per target_id — SSH polling only runs while count > 0
+_active_clients: dict[int, int] = {}
+
 # Single compound command run on the Mac every 3s.
 # Sections separated by "---SMOGGLE---" sentinel so we can split reliably.
 _STATS_CMD = r"""
@@ -115,36 +118,47 @@ def _get_target(target_id: int) -> Target | None:
 
 
 async def _resource_event_generator(target_id: int) -> AsyncGenerator:
-    while True:
-        target = _get_target(target_id)
-        if target is None:
-            yield {"data": json.dumps({**_FALLBACK_PAYLOAD, "error": "Target not found"})}
+    # Register this client — incremented on connect, decremented on disconnect/cancel
+    _active_clients[target_id] = _active_clients.get(target_id, 0) + 1
+    try:
+        while True:
+            target = _get_target(target_id)
+            if target is None:
+                yield {"data": json.dumps({**_FALLBACK_PAYLOAD, "error": "Target not found"})}
+                await asyncio.sleep(3)
+                continue
+
+            executor = SSHExecutor(
+                host=target.host,
+                username=target.username,
+                key_path=target.key_path,
+                port=target.port,
+            )
+
+            try:
+                stdout, stderr, code = await async_run(executor, _STATS_CMD)
+                if code == 0 and stdout.strip():
+                    json_line = next(
+                        (ln for ln in reversed(stdout.splitlines()) if ln.strip().startswith("{")),
+                        None,
+                    )
+                    payload = json.loads(json_line) if json_line else _FALLBACK_PAYLOAD
+                else:
+                    payload = {**_FALLBACK_PAYLOAD, "error": stderr[:200] if stderr else "SSH error"}
+            except Exception as exc:
+                payload = {**_FALLBACK_PAYLOAD, "error": str(exc)[:200]}
+
+            yield {"data": json.dumps(payload)}
             await asyncio.sleep(3)
-            continue
+    finally:
+        # Deregister — when count hits 0, no more SSH polls will fire for this target
+        _active_clients[target_id] = max(0, _active_clients.get(target_id, 1) - 1)
 
-        executor = SSHExecutor(
-            host=target.host,
-            username=target.username,
-            key_path=target.key_path,
-            port=target.port,
-        )
 
-        try:
-            stdout, stderr, code = await async_run(executor, _STATS_CMD)
-            if code == 0 and stdout.strip():
-                # Find the last line that looks like JSON (python3 heredoc may emit warnings)
-                json_line = next(
-                    (ln for ln in reversed(stdout.splitlines()) if ln.strip().startswith("{")),
-                    None,
-                )
-                payload = json.loads(json_line) if json_line else _FALLBACK_PAYLOAD
-            else:
-                payload = {**_FALLBACK_PAYLOAD, "error": stderr[:200] if stderr else "SSH error"}
-        except Exception as exc:
-            payload = {**_FALLBACK_PAYLOAD, "error": str(exc)[:200]}
-
-        yield {"data": json.dumps(payload)}
-        await asyncio.sleep(3)
+# This generator is used for future targets that open a stream when nobody is watching
+# The real idle-suppression happens because EventSourceResponse cancels the generator
+# when the client disconnects — the finally block above decrements the counter, and
+# no new generator is started until the next browser connection opens /api/status/stream.
 
 
 @router.get("/stream")
