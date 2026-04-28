@@ -50,20 +50,17 @@ function ToggleSwitch({ isOn, pending, onToggle, name }) {
       disabled={pending}
       aria-label={`${isOn ? 'Disable' : 'Enable'} ${name}`}
       className={[
-        'relative flex-shrink-0 w-11 h-6 rounded-full',
-        'transition-colors duration-150',
-        'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800',
-        isOn
-          ? 'bg-green-500 focus:ring-green-500'
-          : 'bg-slate-600 focus:ring-slate-500',
-        pending ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+        'relative flex-shrink-0 w-11 h-6 rounded-full overflow-hidden',
+        'transition-colors duration-150 focus:outline-none',
+        isOn ? 'bg-green-500' : 'bg-slate-600',
+        pending ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
       ].join(' ')}
     >
       <span
         className={[
-          'absolute top-1 w-4 h-4 bg-white rounded-full shadow',
+          'absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow',
           'transition-transform duration-150',
-          isOn ? 'translate-x-6' : 'translate-x-1',
+          isOn ? 'translate-x-5' : 'translate-x-0',
         ].join(' ')}
       />
     </button>
