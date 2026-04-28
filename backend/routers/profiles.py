@@ -82,6 +82,22 @@ async def apply_profile(
 
     # Sequential apply — never parallel launchctl calls
     for toggle, desired_state in work:
+        # Skip toggles the hardware doesn't support (e.g. high_power_mode on MacBook Air)
+        if toggle.get("cmd_supported"):
+            chk_out, _, _ = await async_run(executor, toggle["cmd_supported"])
+            chk_lines = [ln.strip().strip("\r") for ln in chk_out.splitlines() if ln.strip()]
+            if (chk_lines[-1] if chk_lines else "") != "1":
+                results.append({
+                    "toggle_id": toggle["id"],
+                    "name": toggle["name"],
+                    "old_state": "unsupported",
+                    "new_state": "unsupported",
+                    "success": True,
+                    "skipped": True,
+                    "stderr": None,
+                })
+                continue
+
         cmd = toggle["cmd_on"] if desired_state == "on" else toggle["cmd_off"]
 
         # Read old state — use last non-empty line (handles multi-line cmd_status output)
@@ -111,6 +127,7 @@ async def apply_profile(
             "old_state": old_state,
             "new_state": desired_state,
             "success": success,
+            "skipped": False,
             "stderr": stderr if not success else None,
         })
 

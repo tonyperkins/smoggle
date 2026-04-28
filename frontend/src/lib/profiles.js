@@ -21,7 +21,7 @@ const ALL_TOGGLES = [
   { id: 'airplay_receiver',    name: 'AirPlay Receiver',             default: 'on' },
   { id: 'ollama',              name: 'Ollama Service',               default: 'on' },
   { id: 'app_nap',             name: 'App Nap',                      default: 'on' },
-  { id: 'high_power_mode',     name: 'High Power Mode',              default: 'off' },
+  { id: 'high_power_mode',     name: 'High Power Mode',              default: 'off', hardwareDependent: true },
   { id: 'notification_center', name: 'Notification Center',          default: 'on' },
   { id: 'mdns',                name: 'mDNS / Bonjour',               default: 'on' },
 ]
@@ -61,7 +61,9 @@ function buildProfileToggles(ids) {
 export const PROFILES_FRONTEND = {
   default: {
     description: 'Restore Apple defaults for all toggles',
-    toggles: ALL_TOGGLES.map(t => ({ id: t.id, name: t.name, from: '—', to: t.default })),
+    toggles: ALL_TOGGLES
+      .filter(t => !t.hardwareDependent)
+      .map(t => ({ id: t.id, name: t.name, from: '—', to: t.default })),
   },
   performance: {
     description: 'Safe background service cuts — recommended for daily inference use',

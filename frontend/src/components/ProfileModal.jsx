@@ -72,9 +72,9 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
     }
   }
 
-  const failCount          = results.filter(r => !r.success).length
-  const hasRestartRequired = results.some(r => r.requires_restart)
-  const changedResults     = results.filter(r => r.old_state !== r.new_state || !r.success)
+  const activeResults      = results.filter(r => !r.skipped)
+  const failCount          = activeResults.filter(r => !r.success).length
+  const hasRestartRequired = activeResults.some(r => r.requires_restart)
 
   return (
     <div
@@ -204,13 +204,13 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
                   : 'bg-red-950/50 border border-red-900 text-red-300',
               ].join(' ')}>
                 {failCount === 0
-                  ? <><CheckCircle2 size={14} /> All {results.length} toggles applied successfully</>
-                  : <><XCircle size={14} /> {failCount} of {results.length} failed</>
+                  ? <><CheckCircle2 size={14} /> All {activeResults.length} toggles applied successfully</>
+                  : <><XCircle size={14} /> {failCount} of {activeResults.length} failed</>
                 }
               </div>
 
-              {/* Individual results */}
-              {results.map((r, i) => (
+              {/* Individual results — skip unsupported hardware toggles */}
+              {activeResults.map((r, i) => (
                 <div key={i} className={[
                   'flex items-center gap-2 text-xs px-2 py-1.5 rounded',
                   !r.success ? 'bg-red-950/30' : '',
