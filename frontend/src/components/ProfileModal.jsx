@@ -39,12 +39,12 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
     if (isHyper) confirmRef.current?.focus()
   }, [isHyper])
 
-  // Close on Escape
+  // Close on Escape — only when not yet done (after apply, must use Close button)
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose() }
+    function onKey(e) { if (e.key === 'Escape' && !done) onClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, done])
 
   async function handleApply() {
     if (!canApply) return
@@ -66,7 +66,7 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
       const data = await res.json()
       setResults(data.results ?? [])
       setDone(true)
-      setTimeout(() => onApplied?.(), 1400)
+      onApplied?.()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -80,7 +80,7 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      onClick={e => { if (e.target === e.currentTarget && !done) onClose() }}
     >
       <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg mx-4 shadow-2xl
                       transition-all duration-200 animate-in fade-in slide-in-from-bottom-4">
