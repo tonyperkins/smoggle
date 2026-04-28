@@ -12,14 +12,22 @@ const DEFAULT_STATE = {
   inference_servers: [],
 }
 
-export function useSSE(targetId) {
+export function useSSE(targetId, paused = false) {
   const [stats, setStats] = useState(DEFAULT_STATE)
   const [connected, setConnected] = useState(false)
   const [error, setError] = useState(null)
   const esRef = useRef(null)
 
   useEffect(() => {
-    if (!targetId) return
+    if (!targetId || paused) {
+      // Close any existing connection when paused or no target
+      if (esRef.current) {
+        esRef.current.close()
+        esRef.current = null
+      }
+      setConnected(false)
+      return
+    }
 
     const url = `/api/status/stream?target=${targetId}`
     const es = new EventSource(url)
@@ -48,7 +56,7 @@ export function useSSE(targetId) {
       es.close()
       esRef.current = null
     }
-  }, [targetId])
+  }, [targetId, paused])
 
   return { ...stats, connected, error }
 }

@@ -286,23 +286,6 @@ TOGGLES = [
   },
 
   {
-    "id": "wifi",
-    "name": "Wi-Fi",
-    "description": "Wireless network interface (en0)",
-    "purpose": "Disabling Wi-Fi stops all wireless traffic and frees the RF subsystem. WARNING: if Smoggle is controlling this Mac over Wi-Fi, turning it off will sever the SSH session — the toggle will appear to fail but the change takes effect.",
-    "impact": "LOW — frees RF subsystem and reduces minor background wake traffic",
-    "default_state": "on",
-    "danger": 2,
-    "requires_restart": False,
-    "restart_note": "",
-    "profiles": [],
-    "apple_silicon_only": True,
-    "cmd_off": "networksetup -setairportpower en0 off 2>/dev/null; echo done",
-    "cmd_on": "networksetup -setairportpower en0 on 2>/dev/null; echo done",
-    "cmd_status": "networksetup -getairportpower en0 2>/dev/null | grep -qi 'On' && echo 1 || echo 0",
-  },
-
-  {
     "id": "mdns",
     "name": "mDNS / Bonjour",
     "description": "Local network discovery protocol",

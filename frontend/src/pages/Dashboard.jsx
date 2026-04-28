@@ -6,7 +6,7 @@
  */
 import React, { useRef, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Settings, BookOpen, History as HistoryIcon, AlertCircle, Loader2 } from 'lucide-react'
+import { Settings, BookOpen, History as HistoryIcon, AlertCircle, Loader2, PauseCircle, PlayCircle } from 'lucide-react'
 import { useTarget } from '../App.jsx'
 import MacSelector from '../components/MacSelector.jsx'
 import ConnectionBadge from '../components/ConnectionBadge.jsx'
@@ -19,8 +19,23 @@ import { useToggles } from '../hooks/useToggles.js'
 
 export default function Dashboard() {
   const { activeTargetId } = useTarget()
-  const sseStats = useSSE(activeTargetId)
+  const [paused, setPaused] = useState(false)
+  const sseStats = useSSE(activeTargetId, paused)
   const { toggles, loading, error: toggleError, applyToggle, refetch } = useToggles(activeTargetId)
+
+  async function handlePauseToggle() {
+    if (!paused) {
+      // Pause: close SSE (handled by useSSE) and drop the SSH pool connection
+      setPaused(true)
+      if (activeTargetId) {
+        fetch(`/api/targets/${activeTargetId}/disconnect`, { method: 'POST' }).catch(() => {})
+      }
+    } else {
+      // Resume: re-enable SSE and refetch toggle states
+      setPaused(false)
+      refetch()
+    }
+  }
 
   // CPU sparkline: rolling 60-point history
   const cpuHistoryRef = useRef([])
@@ -44,6 +59,20 @@ export default function Dashboard() {
           <ConnectionBadge status={connStatus} />
         </div>
         <nav className="flex items-center gap-1 flex-shrink-0">
+          {activeTargetId && (
+            <button
+              onClick={handlePauseToggle}
+              title={paused ? 'Resume SSH connection' : 'Pause — disconnect SSH and stop all polling'}
+              className={[
+                'p-1.5 rounded transition-colors',
+                paused
+                  ? 'text-amber-400 hover:text-amber-300 hover:bg-slate-700'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700',
+              ].join(' ')}
+            >
+              {paused ? <PlayCircle size={17} /> : <PauseCircle size={17} />}
+            </button>
+          )}
           <Link to="/history" title="History"
             className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200">
             <HistoryIcon size={17} />
@@ -60,7 +89,13 @@ export default function Dashboard() {
       </header>
 
       {/* ── SSH error banner ── */}
-      {sseStats.error && activeTargetId && (
+      {paused && activeTargetId && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-950/60 border-b border-amber-800 text-amber-300 text-xs">
+          <PauseCircle size={14} className="flex-shrink-0" />
+          Paused — SSH disconnected. Click <PlayCircle size={12} className="inline mx-1" /> to resume.
+        </div>
+      )}
+      {!paused && sseStats.error && activeTargetId && (
         <div className="flex items-center gap-2 px-4 py-2 bg-red-950 border-b border-red-800 text-red-300 text-xs">
           <AlertCircle size={14} className="flex-shrink-0" />
           SSH connection lost — retrying…

@@ -87,3 +87,14 @@ async def delete_target(target_id: int, session: Session = Depends(get_session))
         raise HTTPException(status_code=404, detail="Target not found")
     session.delete(target)
     session.commit()
+
+
+@router.post("/{target_id}/disconnect", status_code=200)
+async def disconnect_target(target_id: int, session: Session = Depends(get_session)):
+    """Close the cached SSH connection for this target. The next SSH action will reconnect."""
+    target = session.get(Target, target_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+    executor = _make_executor(target)
+    executor.close()
+    return {"ok": True, "target_id": target_id}
