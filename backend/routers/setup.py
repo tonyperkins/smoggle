@@ -76,7 +76,7 @@ async def test_sudo(body: TestSudoBody, session: Session = Depends(get_session))
         ("pmset",          "sudo -n pmset -g 2>&1 | head -1; echo $?"),
         ("softwareupdate", "sudo -n softwareupdate --schedule 2>&1; echo $?"),
         ("launchctl",      "sudo -n launchctl list 2>&1 | head -1; echo $?"),
-        ("defaults",       "sudo -n defaults read NSGlobalDomain AppleInterfaceStyle 2>&1; echo $?"),
+        ("defaults",       "sudo -n defaults write com.smoggle.test ping ok 2>&1 && sudo -n defaults delete com.smoggle.test 2>&1; echo $?"),
     ]
 
     results = []
