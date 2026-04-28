@@ -31,10 +31,17 @@ class BaseExecutor(ABC):
 
 
 class SSHExecutor(BaseExecutor):
-    """Paramiko-backed SSH executor with connection pooling per target."""
+    """Paramiko-backed SSH executor with connection pooling per target.
 
-    _pool: dict = {}
-    _lock: threading.Lock = threading.Lock()
+    Paramiko's SSHClient is NOT safe for concurrent exec_command calls from
+    multiple threads on the same transport. We serialise all run() calls per
+    target with a per-key threading.Lock so that asyncio.gather() batches
+    work correctly without corrupting channels.
+    """
+
+    _pool: dict = {}          # pool_key -> paramiko.SSHClient
+    _pool_lock: threading.Lock = threading.Lock()   # guards pool dict itself
+    _cmd_locks: dict = {}     # pool_key -> threading.Lock (serialises exec_command)
 
     def __init__(
         self,
@@ -50,9 +57,13 @@ class SSHExecutor(BaseExecutor):
         self.port = port
         self.timeout = timeout
         self._pool_key = f"{username}@{host}:{port}"
+        # Ensure a command-serialisation lock exists for this target
+        with SSHExecutor._pool_lock:
+            if self._pool_key not in SSHExecutor._cmd_locks:
+                SSHExecutor._cmd_locks[self._pool_key] = threading.Lock()
 
     def _get_client(self) -> paramiko.SSHClient:
-        with SSHExecutor._lock:
+        with SSHExecutor._pool_lock:
             client = SSHExecutor._pool.get(self._pool_key)
             if client is None or not client.get_transport() or not client.get_transport().is_active():
                 client = paramiko.SSHClient()
@@ -70,17 +81,19 @@ class SSHExecutor(BaseExecutor):
             return client
 
     def run(self, command: str) -> tuple[str, str, int]:
-        try:
-            client = self._get_client()
-            _, stdout_f, stderr_f = client.exec_command(command, timeout=self.timeout)
-            exit_code = stdout_f.channel.recv_exit_status()
-            stdout = stdout_f.read().decode("utf-8", errors="replace").strip()
-            stderr = stderr_f.read().decode("utf-8", errors="replace").strip()
-            return stdout, stderr, exit_code
-        except Exception as exc:
-            with SSHExecutor._lock:
-                SSHExecutor._pool.pop(self._pool_key, None)
-            return "", str(exc), 1
+        cmd_lock = SSHExecutor._cmd_locks[self._pool_key]
+        with cmd_lock:
+            try:
+                client = self._get_client()
+                _, stdout_f, stderr_f = client.exec_command(command, timeout=self.timeout)
+                exit_code = stdout_f.channel.recv_exit_status()
+                stdout = stdout_f.read().decode("utf-8", errors="replace").strip()
+                stderr = stderr_f.read().decode("utf-8", errors="replace").strip()
+                return stdout, stderr, exit_code
+            except Exception as exc:
+                with SSHExecutor._pool_lock:
+                    SSHExecutor._pool.pop(self._pool_key, None)
+                return "", str(exc), 1
 
     def test_connection(self) -> bool:
         try:
@@ -90,7 +103,7 @@ class SSHExecutor(BaseExecutor):
             return False
 
     def close(self):
-        with SSHExecutor._lock:
+        with SSHExecutor._pool_lock:
             client = SSHExecutor._pool.pop(self._pool_key, None)
             if client:
                 try:
