@@ -74,11 +74,12 @@ export default function ToggleCard({ toggle, onApply }) {
 
   const liveState = toggle.live_state
   const isOn = liveState === 'on'
+  const isUnsupported = liveState === 'unsupported'
   const isUnknown = !liveState || liveState === 'unknown' || liveState === 'error'
   const impact = impactMeta(toggle.impact ?? '')
 
   async function handleToggle() {
-    if (pending || isUnknown) return
+    if (pending || isUnknown || isUnsupported) return
     setPending(true)
     const result = await onApply(toggle.id, isOn ? 'off' : 'on')
     if (!result.success) {
@@ -92,6 +93,7 @@ export default function ToggleCard({ toggle, onApply }) {
     <div className={[
       'bg-slate-800 border rounded-lg p-4 flex flex-col gap-3',
       'transition-all duration-150',
+      isUnsupported ? 'border-slate-700/40 opacity-50' :
       toggle.danger === 2 ? 'border-red-900/60' : 'border-slate-700',
     ].join(' ')}>
 
@@ -102,7 +104,7 @@ export default function ToggleCard({ toggle, onApply }) {
           <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{toggle.description}</p>
         </div>
         <div className="flex-shrink-0">
-          <ToggleSwitch isOn={isOn} pending={pending || isUnknown} onToggle={handleToggle} name={toggle.name} />
+          <ToggleSwitch isOn={isOn} pending={pending || isUnknown || isUnsupported} onToggle={handleToggle} name={toggle.name} />
         </div>
       </div>
 
@@ -112,11 +114,12 @@ export default function ToggleCard({ toggle, onApply }) {
         {/* ON / OFF state chip */}
         <span className={[
           'text-xs font-bold px-2 py-0.5 rounded border',
-          isUnknown ? 'bg-slate-700 border-slate-600 text-slate-500 italic'
-            : isOn   ? 'bg-green-950 border-green-700 text-green-300'
-                     : 'bg-slate-700 border-slate-600 text-slate-400',
+          isUnsupported ? 'bg-slate-700 border-slate-700 text-slate-600 italic' :
+          isUnknown     ? 'bg-slate-700 border-slate-600 text-slate-500 italic'
+            : isOn      ? 'bg-green-950 border-green-700 text-green-300'
+                        : 'bg-slate-700 border-slate-600 text-slate-400',
         ].join(' ')}>
-          {isUnknown ? '—' : isOn ? 'ON' : 'OFF'}
+          {isUnsupported ? 'N/A' : isUnknown ? '—' : isOn ? 'ON' : 'OFF'}
         </span>
 
         {/* Impact badge */}

@@ -39,14 +39,27 @@ def _make_executor(target: Target) -> SSHExecutor:
     )
 
 
+async def _check_supported(executor: SSHExecutor, toggle: dict) -> bool:
+    """If toggle has cmd_supported, run it and return False if hardware doesn't support it."""
+    cmd = toggle.get("cmd_supported")
+    if not cmd:
+        return True
+    try:
+        stdout, _, code = await async_run(executor, cmd)
+        lines = [ln.strip().strip("\r") for ln in stdout.splitlines() if ln.strip()]
+        return (lines[-1] if lines else "") == "1"
+    except Exception:
+        return True  # assume supported on error
+
+
 async def _read_live_state(executor: SSHExecutor, toggle: dict) -> str:
-    """Run cmd_status; returns 'on' or 'off'. Defaults to 'unknown' on error.
+    """Run cmd_status; returns 'on', 'off', or 'unsupported'. Defaults to 'unknown' on error.
 
     Accepts multi-line output — checks the last non-empty line for '1' or '0'.
-    This handles compound commands like:
-        tmutil status ... | grep ... && echo 1 || echo 0
-    which may emit extra lines before the final echo.
     """
+    if not await _check_supported(executor, toggle):
+        return "unsupported"
+
     try:
         stdout, stderr, code = await async_run(executor, toggle["cmd_status"])
     except Exception:
@@ -109,6 +122,10 @@ async def apply_toggle(
     tgt = _get_target_or_404(body.target_id, session)
     executor = _make_executor(tgt)
     toggle = TOGGLES_BY_ID[toggle_id]
+
+    # Block apply if hardware doesn't support this toggle
+    if not await _check_supported(executor, toggle):
+        raise HTTPException(status_code=409, detail="Toggle not supported on this hardware")
 
     # Read current state before applying
     old_state = await _read_live_state(executor, toggle)
