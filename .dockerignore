@@ -1,0 +1,20 @@
+# Node
+frontend/node_modules
+frontend/.vite
+
+# Python
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.venv
+backend/data
+
+# Dev artifacts
+.git
+.gitignore
+*.md
+*.log
+
+# Local data (mounted as volume in Docker)
+data/

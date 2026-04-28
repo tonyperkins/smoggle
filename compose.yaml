@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  smoggle:
+    build: .
+    container_name: smoggle
+    ports:
+      - "7420:7420"
+    volumes:
+      - smoggle_data:/app/data
+      - ~/.ssh:/root/.ssh:ro
+    environment:
+      - DEPLOY_MODE=remote
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7420/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  smoggle_data:

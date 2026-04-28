@@ -1,0 +1,134 @@
+"""
+executor.py — SSH and local command executor abstractions.
+
+SSHExecutor.run() is synchronous/blocking (Paramiko). All callers inside
+async route handlers must use async_run() instead of calling run() directly,
+to avoid blocking the FastAPI / uvicorn event loop.
+"""
+from abc import ABC, abstractmethod
+from typing import Optional
+import asyncio
+import functools
+import threading
+import paramiko
+
+
+class BaseExecutor(ABC):
+    @abstractmethod
+    def run(self, command: str) -> tuple[str, str, int]:
+        """Execute a command. Returns (stdout, stderr, exit_code)."""
+        pass
+
+    @abstractmethod
+    def test_connection(self) -> bool:
+        """Return True if the connection is reachable and usable."""
+        pass
+
+    @abstractmethod
+    def close(self):
+        """Release any held connections."""
+        pass
+
+
+class SSHExecutor(BaseExecutor):
+    """Paramiko-backed SSH executor with connection pooling per target."""
+
+    _pool: dict = {}
+    _lock: threading.Lock = threading.Lock()
+
+    def __init__(
+        self,
+        host: str,
+        username: str,
+        key_path: str,
+        port: int = 22,
+        timeout: int = 10,
+    ):
+        self.host = host
+        self.username = username
+        self.key_path = key_path
+        self.port = port
+        self.timeout = timeout
+        self._pool_key = f"{username}@{host}:{port}"
+
+    def _get_client(self) -> paramiko.SSHClient:
+        with SSHExecutor._lock:
+            client = SSHExecutor._pool.get(self._pool_key)
+            if client is None or not client.get_transport() or not client.get_transport().is_active():
+                client = paramiko.SSHClient()
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                client.connect(
+                    hostname=self.host,
+                    port=self.port,
+                    username=self.username,
+                    key_filename=self.key_path,
+                    timeout=self.timeout,
+                    allow_agent=False,
+                    look_for_keys=False,
+                )
+                SSHExecutor._pool[self._pool_key] = client
+            return client
+
+    def run(self, command: str) -> tuple[str, str, int]:
+        try:
+            client = self._get_client()
+            _, stdout_f, stderr_f = client.exec_command(command, timeout=self.timeout)
+            exit_code = stdout_f.channel.recv_exit_status()
+            stdout = stdout_f.read().decode("utf-8", errors="replace").strip()
+            stderr = stderr_f.read().decode("utf-8", errors="replace").strip()
+            return stdout, stderr, exit_code
+        except Exception as exc:
+            with SSHExecutor._lock:
+                SSHExecutor._pool.pop(self._pool_key, None)
+            return "", str(exc), 1
+
+    def test_connection(self) -> bool:
+        try:
+            stdout, _, code = self.run("echo ok")
+            return code == 0 and stdout.strip() == "ok"
+        except Exception:
+            return False
+
+    def close(self):
+        with SSHExecutor._lock:
+            client = SSHExecutor._pool.pop(self._pool_key, None)
+            if client:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+
+
+class LocalExecutor(BaseExecutor):
+    """Reserved for future local mode. Not implemented in v1."""
+
+    def run(self, command: str) -> tuple[str, str, int]:
+        raise NotImplementedError("Local mode not implemented in v1")
+
+    def test_connection(self) -> bool:
+        raise NotImplementedError("Local mode not implemented in v1")
+
+    def close(self):
+        raise NotImplementedError("Local mode not implemented in v1")
+
+
+async def async_run(executor: BaseExecutor, command: str) -> tuple[str, str, int]:
+    """
+    Awaitable wrapper around BaseExecutor.run().
+
+    SSHExecutor.run() blocks on Paramiko I/O. This helper offloads the call
+    to the default asyncio thread-pool executor so the FastAPI / uvicorn event
+    loop is never blocked.  Use this in every async route handler instead of
+    calling executor.run() directly.
+
+    Usage:
+        stdout, stderr, code = await async_run(executor, "echo ok")
+    """
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, functools.partial(executor.run, command))
+
+
+async def async_test_connection(executor: BaseExecutor) -> bool:
+    """Awaitable wrapper around BaseExecutor.test_connection()."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, executor.test_connection)
