@@ -98,3 +98,76 @@ async def disconnect_target(target_id: int, session: Session = Depends(get_sessi
     executor = _make_executor(target)
     executor.close()
     return {"ok": True, "target_id": target_id}
+
+
+# Processes that must never be killable from the UI — system-critical daemons
+_PROTECTED_PROCS = {
+    "kernel_task", "launchd", "WindowServer", "loginwindow", "sshd",
+    "mds", "mds_stores", "mDNSResponder", "configd", "coreaudiod",
+    "coreaudiolicensed", "opendirectoryd", "diskarbitrationd",
+    "securityd", "trustd", "logd", "notifyd", "watchdogd",
+    "SystemUIServer", "Dock", "Finder",
+}
+
+
+@router.post("/{target_id}/kill/{pid}", status_code=200)
+async def kill_process(
+    target_id: int,
+    pid: int,
+    force: bool = False,
+    session: Session = Depends(get_session),
+):
+    """Send SIGTERM (or SIGKILL if force=true) to a process on the target Mac."""
+    target = session.get(Target, target_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+
+    executor = _make_executor(target)
+
+    # Resolve process name for the protection check
+    name_out, _, _ = await async_run(executor, f"ps -p {pid} -o comm= 2>/dev/null")
+    proc_name = name_out.strip().split("/")[-1]
+
+    if proc_name in _PROTECTED_PROCS:
+        raise HTTPException(status_code=403, detail=f"Process '{proc_name}' is protected and cannot be killed")
+
+    sig = "SIGKILL" if force else "SIGTERM"
+    sig_flag = f"-{sig}"
+
+    safe_name = proc_name.replace("'", "'\\''")
+
+    if not force:
+        # For GUI apps, try osascript quit first — respects app lifecycle properly.
+        # Falls back to pkill SIGTERM if osascript fails (non-GUI / no bundle).
+        osa_name = proc_name.replace('"', '\\"')
+        cmd = (
+            f'osascript -e \'tell application "{osa_name}" to quit\' 2>/dev/null'
+            f" || pkill -SIGTERM -x '{safe_name}' 2>/dev/null"
+            f"; echo __exit__$?"
+        )
+    else:
+        # Force: SIGKILL — cannot be caught or ignored
+        cmd = f"pkill -SIGKILL -x '{safe_name}' 2>&1; echo __exit__$?"
+
+    stdout, stderr, code = await async_run(executor, cmd)
+
+    exit_code = 0
+    output_lines = []
+    for line in stdout.splitlines():
+        if line.startswith("__exit__"):
+            try:
+                exit_code = int(line.split("__exit__", 1)[1])
+            except ValueError:
+                pass
+        else:
+            output_lines.append(line)
+    output = "\n".join(output_lines).strip()
+
+    # pkill exit 1 = no matching process found (already dead is fine)
+    if exit_code not in (0, 1):
+        raise HTTPException(
+            status_code=500,
+            detail=output or stderr.strip() or f"pkill exited {exit_code}"
+        )
+
+    return {"ok": True, "pid": pid, "signal": sig, "process": proc_name}

@@ -2,7 +2,7 @@
 
 AI Performance Toggle Dashboard for macOS Apple Silicon.
 
-Remotely toggle macOS system services via SSH to maximize MLX/Ollama inference performance. Runs on Milo (Linux Docker host), controls target Macs over SSH.
+Remotely toggle macOS system services via SSH to maximize MLX/Ollama inference performance. Runs on a Linux/Docker host and controls target Macs over SSH.
 
 ---
 
@@ -15,12 +15,12 @@ git clone <repo> smoggle
 cd smoggle
 ```
 
-### 2. SSH Key Setup (on Milo — one time per Mac)
+### 2. SSH Key Setup (on your Docker/Linux host — one time per Mac)
 
 ```bash
-ssh-keygen -t ed25519 -C "milo-smoggle" -f ~/.ssh/smoggle_ed25519
-ssh-copy-id -i ~/.ssh/smoggle_ed25519.pub tonyperkins@<MAC_IP>
-ssh -i ~/.ssh/smoggle_ed25519 tonyperkins@<MAC_IP> echo "Smoggle connection OK"
+ssh-keygen -t ed25519 -C "smoggle" -f ~/.ssh/smoggle_ed25519
+ssh-copy-id -i ~/.ssh/smoggle_ed25519.pub <YOUR_USERNAME>@<MAC_IP>
+ssh -i ~/.ssh/smoggle_ed25519 <YOUR_USERNAME>@<MAC_IP> echo "Smoggle connection OK"
 ```
 
 ### 3. Passwordless sudo on each target Mac
@@ -31,7 +31,7 @@ sudo visudo -f /etc/sudoers.d/smoggle
 
 Add:
 ```
-tonyperkins ALL=(ALL) NOPASSWD: /usr/sbin/mdutil, /usr/bin/tmutil, /usr/bin/pmset, /usr/sbin/softwareupdate, /bin/launchctl, /usr/bin/defaults
+<YOUR_USERNAME> ALL=(ALL) NOPASSWD: /usr/sbin/mdutil, /usr/bin/tmutil, /usr/bin/pmset, /usr/sbin/softwareupdate, /bin/launchctl, /usr/bin/defaults
 ```
 
 ### 4. Build and Deploy
@@ -44,15 +44,15 @@ Smoggle runs on port **7420**.
 
 Health check: `curl http://localhost:7420/health`
 
-### 5. Caddy Reverse Proxy (smoggle.perkinslab.com)
+### 5. Caddy Reverse Proxy (optional)
 
 Add to your Caddyfile:
 
 ```
-smoggle.perkinslab.com {
+smoggle.yourdomain.com {
     # TODO v2: uncomment to enable Basic Auth
     # basicauth {
-    #     tony <bcrypt_hash>   # generate: caddy hash-password
+    #     youruser <bcrypt_hash>   # generate: caddy hash-password
     # }
     reverse_proxy smoggle:7420
 }
@@ -62,7 +62,7 @@ Reload Caddy: `caddy reload`
 
 ### 6. First Run
 
-1. Open `http://smoggle.perkinslab.com` (or `http://localhost:7420`)
+1. Open `http://localhost:7420` (or your Caddy domain)
 2. You'll be redirected to the **Setup Guide** page
 3. Follow the numbered steps to verify SSH and sudo access
 4. Add your target Mac(s) in **Settings**
@@ -98,13 +98,13 @@ npm run dev   # http://localhost:5173 — proxies /api to :7420
 [Browser / Phone]
       |
       ▼
-[Caddy on Milo] ──► smoggle.perkinslab.com
+[Caddy on Docker host] ──► smoggle.yourdomain.com
       |
       ▼
 [Smoggle FastAPI :7420]
       |
-      ├──► SSH ──► Laurie's Air (192.168.50.118)
-      └──► SSH ──► Inference Node (<IP>)
+      ├──► SSH ──► Mac 1 (<IP>)
+      └──► SSH ──► Mac 2 (<IP>)
 ```
 
 - **Backend**: FastAPI + SQLModel (SQLite) + Paramiko SSH

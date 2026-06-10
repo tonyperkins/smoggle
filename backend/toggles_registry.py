@@ -38,7 +38,7 @@ TOGGLES = [
     "apple_silicon_only": True,
     "cmd_off": "sudo tmutil disable",
     "cmd_on": "sudo tmutil enable",
-    "cmd_status": "tmutil status 2>/dev/null | grep -qE '(Enabled|Running) = 1' && echo 1 || echo 0",
+    "cmd_status": "val=$(sudo defaults read /Library/Preferences/com.apple.TimeMachine AutoBackup 2>/dev/null); [ \"$val\" = '1' ] && echo 1 || echo 0",
   },
 
   {

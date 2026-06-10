@@ -6,9 +6,19 @@ import { useState, useEffect, useRef } from 'react'
 
 const DEFAULT_STATE = {
   cpu_percent: 0,
+  cpu_user: 0,
+  cpu_sys: 0,
+  cpu_idle: 100,
   memory_used_gb: 0,
   memory_total_gb: 0,
+  memory_active_gb: 0,
+  memory_wired_gb: 0,
+  memory_compressed_gb: 0,
+  memory_inactive_gb: 0,
+  memory_free_gb: 0,
   swap_used_gb: 0,
+  top_procs_by_rss: [],
+  top_procs_by_cpu: [],
   inference_servers: [],
 }
 

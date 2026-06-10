@@ -107,7 +107,13 @@ async def apply_profile(
         old_state = "on" if old_val == "1" else "off" if old_val == "0" else "unknown"
 
         stdout, stderr, exit_code = await async_run(executor, cmd)
-        success = exit_code == 0
+
+        # Verify by re-reading state — some tools (e.g. mdutil) exit non-zero even on success
+        new_stdout, _, _ = await async_run(executor, toggle["cmd_status"])
+        new_lines = [ln.strip().strip("\r") for ln in new_stdout.splitlines() if ln.strip()]
+        new_val = new_lines[-1] if new_lines else ""
+        actual_state = "on" if new_val == "1" else "off" if new_val == "0" else "unknown"
+        success = (actual_state == desired_state) or (exit_code == 0 and actual_state not in ("unknown", "unsupported"))
 
         history = ToggleHistory(
             target_id=body.target_id,
@@ -116,7 +122,7 @@ async def apply_profile(
             new_state=desired_state,
             profile=name,
             success=success,
-            stderr=stderr if not success else None,
+            stderr=stderr or None,
             timestamp=datetime.utcnow(),
         )
         session.add(history)
@@ -128,7 +134,7 @@ async def apply_profile(
             "new_state": desired_state,
             "success": success,
             "skipped": False,
-            "stderr": stderr if not success else None,
+            "stderr": stderr or None,
         })
 
     # Update last_seen

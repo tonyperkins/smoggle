@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Filter, CheckCircle2, XCircle, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Filter, CheckCircle2, XCircle, Loader2, RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { useTarget } from '../App.jsx'
 
 function StateBadge({ state }) {
@@ -37,6 +37,15 @@ export default function History() {
   const [loading, setLoading]         = useState(false)
   const [toggleFilter, setToggleFilter] = useState('')
   const [profileFilter, setProfileFilter] = useState('')
+  const [expandedIds, setExpandedIds] = useState(new Set())
+
+  function toggleExpand(id) {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   const load = useCallback(() => {
     if (!activeTargetId) return
@@ -124,41 +133,75 @@ export default function History() {
 
         {/* Entry list */}
         <div className="space-y-2">
-          {history.map(h => (
-            <div
-              key={h.id}
-              className={[
-                'bg-slate-800 border rounded-xl px-4 py-3',
-                h.success ? 'border-slate-700' : 'border-red-900/60',
-              ].join(' ')}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  {h.success
-                    ? <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
-                    : <XCircle     size={14} className="text-red-500   flex-shrink-0" />
-                  }
-                  <span className="font-medium text-slate-200 text-sm">{h.toggle_name ?? h.toggle_id}</span>
-                  {h.toggle_name && h.toggle_name !== h.toggle_id && (
-                    <span className="text-slate-600 text-xs font-mono">{h.toggle_id}</span>
-                  )}
-                  <span className="text-slate-600 text-xs">→</span>
-                  <StateBadge state={h.old_state} />
-                  <span className="text-slate-600 text-xs">→</span>
-                  <StateBadge state={h.new_state} />
-                  <ProfileTag profile={h.profile} />
+          {history.map(h => {
+            const hasDetail = !!h.stderr
+            const isExpanded = expandedIds.has(h.id)
+            const isFailure = !h.success
+            const isWarning = h.success && h.stderr
+            return (
+              <div
+                key={h.id}
+                className={[
+                  'bg-slate-800 border rounded-xl overflow-hidden',
+                  isFailure  ? 'border-red-900/60' :
+                  isWarning  ? 'border-amber-900/50' :
+                               'border-slate-700',
+                ].join(' ')}
+              >
+                {/* Summary row — click anywhere to expand if there's detail */}
+                <div
+                  className={`px-4 py-3 flex items-start justify-between gap-3 ${hasDetail ? 'cursor-pointer select-none hover:bg-slate-700/40' : ''}`}
+                  onClick={() => hasDetail && toggleExpand(h.id)}
+                >
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    {isFailure
+                      ? <XCircle        size={14} className="text-red-500    flex-shrink-0" />
+                      : isWarning
+                        ? <AlertTriangle size={14} className="text-amber-400 flex-shrink-0" />
+                        : <CheckCircle2  size={14} className="text-green-500 flex-shrink-0" />
+                    }
+                    <span className="font-medium text-slate-200 text-sm">{h.toggle_name ?? h.toggle_id}</span>
+                    {h.toggle_name && h.toggle_name !== h.toggle_id && (
+                      <span className="text-slate-600 text-xs font-mono">{h.toggle_id}</span>
+                    )}
+                    <span className="text-slate-600 text-xs">→</span>
+                    <StateBadge state={h.old_state} />
+                    <span className="text-slate-600 text-xs">→</span>
+                    <StateBadge state={h.new_state} />
+                    <ProfileTag profile={h.profile} />
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs text-slate-500 whitespace-nowrap">
+                      {new Date(h.timestamp).toLocaleString()}
+                    </span>
+                    {hasDetail && (
+                      <span className="text-slate-500">
+                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs text-slate-500 flex-shrink-0 whitespace-nowrap">
-                  {new Date(h.timestamp).toLocaleString()}
-                </span>
+
+                {/* Expanded stderr detail */}
+                {hasDetail && isExpanded && (
+                  <div className={`border-t px-4 py-3 ${
+                    isFailure ? 'border-red-900/40 bg-red-950/20' : 'border-amber-900/30 bg-amber-950/10'
+                  }`}>
+                    <p className={`text-xs font-semibold mb-1.5 ${
+                      isFailure ? 'text-red-400' : 'text-amber-400'
+                    }`}>
+                      {isFailure ? 'Error output' : 'Warning output'}
+                    </p>
+                    <pre className={`text-xs font-mono whitespace-pre-wrap break-all leading-relaxed ${
+                      isFailure ? 'text-red-300' : 'text-amber-300'
+                    }`}>
+                      {h.stderr}
+                    </pre>
+                  </div>
+                )}
               </div>
-              {!h.success && h.stderr && (
-                <p className="text-red-400 text-xs mt-2 font-mono bg-red-950/40 rounded px-2 py-1 truncate">
-                  {h.stderr}
-                </p>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

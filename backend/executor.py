@@ -10,6 +10,7 @@ from typing import Optional
 import asyncio
 import functools
 import threading
+import os
 import paramiko
 
 
@@ -53,7 +54,7 @@ class SSHExecutor(BaseExecutor):
     ):
         self.host = host
         self.username = username
-        self.key_path = key_path
+        self.key_path = os.path.expanduser(key_path)
         self.port = port
         self.timeout = timeout
         self._pool_key = f"{username}@{host}:{port}"

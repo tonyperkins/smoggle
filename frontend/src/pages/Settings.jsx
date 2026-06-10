@@ -3,15 +3,15 @@
  */
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Wifi, ShieldCheck, CheckCircle2, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Wifi, ShieldCheck, CheckCircle2, XCircle, Loader2, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 import { useTarget } from '../App.jsx'
 
 const FIELD_DEFS = [
-  { key: 'name',     label: 'Friendly Name', type: 'text',   placeholder: "Laurie's Air"           },
-  { key: 'host',     label: 'Host / IP',     type: 'text',   placeholder: '192.168.50.118'          },
+  { key: 'name',     label: 'Friendly Name', type: 'text',   placeholder: "My Mac Studio"           },
+  { key: 'host',     label: 'Host / IP',     type: 'text',   placeholder: '192.168.1.100'           },
   { key: 'port',     label: 'SSH Port',      type: 'number', placeholder: '22'                      },
-  { key: 'username', label: 'SSH Username',  type: 'text',   placeholder: 'tonyperkins'             },
-  { key: 'key_path', label: 'SSH Key Path',  type: 'text',   placeholder: '/root/.ssh/smoggle_ed25519' },
+  { key: 'username', label: 'SSH Username',  type: 'text',   placeholder: 'your_username'           },
+  { key: 'key_path', label: 'SSH Key Path',  type: 'text',   placeholder: '/root/.ssh/smoggle_ed25519 (absolute path inside container)' },
 ]
 
 function AddMacForm({ onAdded, onCancel }) {
@@ -85,6 +85,84 @@ function AddMacForm({ onAdded, onCancel }) {
   )
 }
 
+function EditMacForm({ target, onSaved, onCancel }) {
+  const [form, setForm] = useState({
+    name: target.name,
+    host: target.host,
+    port: target.port,
+    username: target.username,
+    key_path: target.key_path,
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState(null)
+
+  async function submit(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/targets/${target.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail ?? 'Failed to save')
+      }
+      const updated = await res.json()
+      onSaved(updated)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="border-t border-slate-700 bg-slate-800/60 px-4 py-4 space-y-3">
+      <h4 className="text-slate-300 text-xs font-semibold uppercase tracking-wide">Edit</h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {FIELD_DEFS.map(({ key, label, type, placeholder }) => (
+          <div key={key} className={`flex flex-col gap-1 ${key === 'key_path' ? 'sm:col-span-2' : ''}`}>
+            <label className="text-xs text-slate-400 font-medium">{label}</label>
+            <input
+              type={type}
+              value={form[key]}
+              onChange={e => setForm(f => ({ ...f, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
+              placeholder={placeholder}
+              required={key !== 'port'}
+              className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100
+                         placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
+        ))}
+      </div>
+      {error && (
+        <p className="text-red-400 text-xs bg-red-950 border border-red-800 rounded px-3 py-2">{error}</p>
+      )}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-600
+                     text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+        >
+          {saving ? <Loader2 size={14} className="animate-spin" /> : null}
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-700"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
 function TestResultRow({ result }) {
   if (!result) return null
   if (result.loading) return (
@@ -116,6 +194,7 @@ export default function Settings() {
   const [showAdd, setShowAdd]     = useState(false)
   const [testResults, setTestResults] = useState({})
   const [expanded, setExpanded]   = useState({})
+  const [editingId, setEditingId] = useState(null)
 
   async function removeMac(id) {
     if (!confirm('Remove this Mac? This cannot be undone.')) return
@@ -141,6 +220,11 @@ export default function Settings() {
   function onAdded() {
     setShowAdd(false)
     fetch('/api/targets').then(r => r.json()).then(setTargets).catch(() => {})
+  }
+
+  function onSaved(updated) {
+    setTargets(ts => ts.map(t => t.id === updated.id ? updated : t))
+    setEditingId(null)
   }
 
   return (
@@ -215,6 +299,15 @@ export default function Settings() {
                     {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </button>
                   <button
+                    onClick={() => setEditingId(id => id === t.id ? null : t.id)}
+                    className={`p-1.5 rounded hover:bg-slate-700 ${
+                      editingId === t.id ? 'text-blue-400' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Edit"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
                     onClick={() => removeMac(t.id)}
                     className="p-1.5 rounded text-slate-500 hover:text-red-400 hover:bg-slate-700"
                     title="Remove Mac"
@@ -223,6 +316,15 @@ export default function Settings() {
                   </button>
                 </div>
               </div>
+
+              {/* Inline edit form */}
+              {editingId === t.id && (
+                <EditMacForm
+                  target={t}
+                  onSaved={onSaved}
+                  onCancel={() => setEditingId(null)}
+                />
+              )}
 
               {/* Expanded test panel */}
               {isExpanded && (

@@ -132,16 +132,21 @@ async def apply_toggle(
 
     cmd = toggle["cmd_on"] if body.state == "on" else toggle["cmd_off"]
     stdout, stderr, exit_code = await async_run(executor, cmd)
-    success = exit_code == 0
 
-    # Record to history
+    # Re-read live state to confirm the change actually took effect.
+    # Some macOS tools (e.g. mdutil) exit non-zero even on success, so we
+    # trust the verified state over the exit code.
+    live_state = await _read_live_state(executor, toggle)
+    success = (live_state == body.state) or (exit_code == 0 and live_state not in ("unknown", "unsupported"))
+
+    # Record to history — always store stderr so informational output is visible
     history = ToggleHistory(
         target_id=body.target_id,
         toggle_id=toggle_id,
         old_state=old_state,
         new_state=body.state,
         success=success,
-        stderr=stderr if not success else None,
+        stderr=stderr or None,
         timestamp=datetime.utcnow(),
     )
     session.add(history)
@@ -157,6 +162,4 @@ async def apply_toggle(
             detail={"message": "Toggle command failed", "stderr": stderr, "toggle_id": toggle_id},
         )
 
-    # Re-read live state to confirm
-    live_state = await _read_live_state(executor, toggle)
     return {**toggle, "live_state": live_state, "old_state": old_state}

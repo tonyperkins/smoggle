@@ -135,7 +135,7 @@ export default function Dashboard() {
 
           {/* Resource strip — sticky inside main scroll area */}
           <div className="sticky top-0 z-20 bg-slate-900 px-4 pt-3 pb-2 border-b border-slate-800">
-            <ResourceStrip stats={{ ...sseStats, cpuHistory: cpuHistoryRef.current }} />
+            <ResourceStrip stats={{ ...sseStats, cpuHistory: cpuHistoryRef.current }} targetId={activeTargetId} />
           </div>
 
           {/* Toggle grid */}

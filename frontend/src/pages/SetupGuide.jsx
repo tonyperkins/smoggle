@@ -154,20 +154,20 @@ export default function SetupGuide() {
           <CodeBlock code="sudo lsof -i :22" />
         </Step>
 
-        <Step n={2} title="Generate a dedicated SSH key on Milo (one-time per Mac)">
-          <CodeBlock code={`ssh-keygen -t ed25519 -C "milo-smoggle" -f ~/.ssh/smoggle_ed25519`} />
+        <Step n={2} title="Generate a dedicated SSH key on your Docker/Linux host (one-time per Mac)">
+          <CodeBlock code={`ssh-keygen -t ed25519 -C "smoggle" -f ~/.ssh/smoggle_ed25519`} />
         </Step>
 
         <Step n={3} title="Install the public key on each target Mac">
-          <CodeBlock code="ssh-copy-id -i ~/.ssh/smoggle_ed25519.pub tonyperkins@<MAC_IP>" />
+          <CodeBlock code="ssh-copy-id -i ~/.ssh/smoggle_ed25519.pub <YOUR_USERNAME>@<MAC_IP>" />
           <p className="text-slate-500 text-xs">Verify it works:</p>
-          <CodeBlock code={`ssh -i ~/.ssh/smoggle_ed25519 tonyperkins@<MAC_IP> echo "Smoggle connection OK"`} />
+          <CodeBlock code={`ssh -i ~/.ssh/smoggle_ed25519 <YOUR_USERNAME>@<MAC_IP> echo "Smoggle connection OK"`} />
         </Step>
 
         <Step n={4} title="Set up passwordless sudo on each target Mac">
           <CodeBlock code="sudo visudo -f /etc/sudoers.d/smoggle" />
           <p className="text-slate-400 text-xs">Add this line (replace username if needed):</p>
-          <CodeBlock code="tonyperkins ALL=(ALL) NOPASSWD: /usr/sbin/mdutil, /usr/bin/tmutil, /usr/bin/pmset, /usr/sbin/softwareupdate, /bin/launchctl, /usr/bin/defaults" />
+          <CodeBlock code="<YOUR_USERNAME> ALL=(ALL) NOPASSWD: /usr/sbin/mdutil, /usr/bin/tmutil, /usr/bin/pmset, /usr/sbin/softwareupdate, /bin/launchctl, /usr/bin/defaults" />
         </Step>
 
         <Step n={5} title="Add the target Mac in Settings">

@@ -71,6 +71,83 @@ try:
 except Exception:
     swap_used_gb = 0.0
 
+# ── Memory pressure breakdown ──────────────────────────────────────────
+try:
+    memory_active_gb    = round(active     * page_size / 1e9, 2)
+    memory_wired_gb     = round(wired      * page_size / 1e9, 2)
+    memory_compressed_gb= round(compressed * page_size / 1e9, 2)
+    memory_inactive_gb  = round(inactive   * page_size / 1e9, 2)
+    memory_free_gb      = round(free       * page_size / 1e9, 2)
+except Exception:
+    memory_active_gb = memory_wired_gb = memory_compressed_gb = memory_inactive_gb = memory_free_gb = 0.0
+
+# ── CPU user/sys split ─────────────────────────────────────────────────
+try:
+    cpu_user = float(cpu_match.group(1)) if cpu_match else 0.0
+    cpu_sys  = float(cpu_match.group(2)) if cpu_match else 0.0
+    idle_m   = re.search(r"(\d+\.\d+)%\s+idle", top_out) if cpu_match else None
+    cpu_idle = float(idle_m.group(1)) if idle_m else max(0.0, 100.0 - cpu_user - cpu_sys)
+except Exception:
+    cpu_user = cpu_sys = cpu_idle = 0.0
+
+# ── Top processes (grouped by parent, aggregated RSS) ─────────────────
+try:
+    ps_out = subprocess.check_output(
+        ["ps", "-Axo", "pid,ppid,pcpu,pmem,rss,comm"],
+        text=True, timeout=6
+    )
+    raw = []
+    for line in ps_out.strip().splitlines()[1:]:
+        parts = line.split(None, 5)
+        if len(parts) == 6:
+            pid, ppid, pcpu, pmem, rss, comm = parts
+            try:
+                raw.append({
+                    "pid":    int(pid),
+                    "ppid":   int(ppid),
+                    "cpu":    float(pcpu),
+                    "mem":    float(pmem),
+                    "rss_mb": round(int(rss) / 1024, 1),
+                    "name":   comm.strip().split("/")[-1],
+                })
+            except (ValueError, TypeError):
+                pass
+
+    # Build pid→proc map, then group children under their parent
+    by_pid = {p["pid"]: p for p in raw}
+    aggregated = {}
+    for p in raw:
+        # Walk up to find the root app process (stop at PID 1 / launchd)
+        root = p
+        visited = set()
+        while root["ppid"] > 1 and root["ppid"] in by_pid and root["ppid"] not in visited:
+            visited.add(root["pid"])
+            root = by_pid[root["ppid"]]
+        key = root["pid"]
+        if key not in aggregated:
+            aggregated[key] = {
+                "pid":       root["pid"],
+                "name":      root["name"],
+                "cpu":       0.0,
+                "rss_mb":    0.0,
+                "children":  0,
+            }
+        aggregated[key]["cpu"]    += p["cpu"]
+        aggregated[key]["rss_mb"] += p["rss_mb"]
+        if p["pid"] != key:
+            aggregated[key]["children"] += 1
+
+    top_procs = [
+        {**v, "cpu": round(v["cpu"], 1), "rss_mb": round(v["rss_mb"], 1)}
+        for v in aggregated.values()
+        if v["rss_mb"] > 5  # filter out tiny idle daemons
+    ]
+    top_procs_by_rss = sorted(top_procs, key=lambda p: p["rss_mb"], reverse=True)[:12]
+    top_procs_by_cpu = sorted(top_procs, key=lambda p: p["cpu"],    reverse=True)[:12]
+except Exception:
+    top_procs_by_rss = []
+    top_procs_by_cpu = []
+
 # ── Inference servers ─────────────────────────────────────────────────
 def pgrep(pattern, exact=False):
     flag = ["-x"] if exact else ["-f"]
@@ -88,9 +165,19 @@ mlx_pid    = pgrep("mlx_lm.server")
 
 result = {
     "cpu_percent":      round(cpu_percent, 1),
+    "cpu_user":         round(cpu_user, 1),
+    "cpu_sys":          round(cpu_sys, 1),
+    "cpu_idle":         round(cpu_idle, 1),
     "memory_used_gb":   memory_used_gb,
     "memory_total_gb":  memory_total_gb,
+    "memory_active_gb":     memory_active_gb,
+    "memory_wired_gb":      memory_wired_gb,
+    "memory_compressed_gb": memory_compressed_gb,
+    "memory_inactive_gb":   memory_inactive_gb,
+    "memory_free_gb":       memory_free_gb,
     "swap_used_gb":     swap_used_gb,
+    "top_procs_by_rss": top_procs_by_rss,
+    "top_procs_by_cpu": top_procs_by_cpu,
     "inference_servers": [
         {"name": "ollama",  "running": ollama_pid is not None, "pid": ollama_pid},
         {"name": "mlx_lm",  "running": mlx_pid   is not None, "pid": mlx_pid},
