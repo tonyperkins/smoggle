@@ -18,7 +18,10 @@ import { useSSE } from '../hooks/useSSE.js'
 import { useToggles } from '../hooks/useToggles.js'
 
 export default function Dashboard() {
-  const { activeTargetId } = useTarget()
+  const { activeTargetId, targets, isMacosSupported, supportedMacos } = useTarget()
+  const activeTarget = targets.find(t => t.id === activeTargetId)
+  const macosUnsupported =
+    activeTarget?.macos_version && !isMacosSupported(activeTarget.macos_version)
   const [paused, setPaused] = useState(false)
   const sseStats = useSSE(activeTargetId, paused)
   const { toggles, loading, error: toggleError, applyToggle, refetch } = useToggles(activeTargetId)
@@ -100,6 +103,14 @@ export default function Dashboard() {
           <AlertCircle size={14} className="flex-shrink-0" />
           SSH connection lost — retrying…
           <Link to="/setup" className="underline ml-1 hover:text-red-200">Setup Guide</Link>
+        </div>
+      )}
+      {macosUnsupported && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-950/60 border-b border-amber-800 text-amber-300 text-xs">
+          <AlertCircle size={14} className="flex-shrink-0" />
+          This Mac runs macOS {activeTarget.macos_version}, which is outside Smoggle's tested
+          range ({supportedMacos?.tested_macos_label || 'macOS 14 (Sonoma)'}). Toggles may
+          apply or report state incorrectly.
         </div>
       )}
 

@@ -31,6 +31,20 @@ performance when you want it; leave no trace when you're done.
 
 ---
 
+## Supported platforms
+
+- **Apple Silicon Macs only** (no Intel support).
+- **Tested on macOS 14 (Sonoma).** Toggles drive macOS via system commands whose
+  behaviour can change between releases, so Smoggle is only verified against the
+  version above. Other macOS versions are **best-effort**: the dashboard detects
+  each target's macOS version and shows a warning when it's outside the tested
+  range, since a toggle may apply or report its state incorrectly there.
+
+The Smoggle server itself runs on any Linux/Docker host (it talks to the Macs
+over SSH).
+
+---
+
 ## Quick Start
 
 ### 1. Clone
