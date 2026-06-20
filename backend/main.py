@@ -42,8 +42,11 @@ if _origins:
         allow_headers=["*"],
     )
 
-# All API routers require Basic Auth. /health and the static SPA stay open.
+# All API routers require Basic Auth. /health, the static SPA, and the
+# enrollment endpoints (setup.public_router — fetched on the target Mac with no
+# dashboard credentials) stay open.
 _auth = [Depends(require_auth)]
+app.include_router(setup.public_router)
 app.include_router(targets.router, dependencies=_auth)
 app.include_router(toggles.router, dependencies=_auth)
 app.include_router(profiles.router, dependencies=_auth)
