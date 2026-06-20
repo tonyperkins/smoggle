@@ -6,6 +6,31 @@ Remotely toggle macOS system services via SSH to maximize MLX/Ollama inference p
 
 ---
 
+## Background
+
+Smoggle started on an **M4 MacBook Air with 16 GB of unified memory** — my wife's
+laptop — which I'd borrowed to experiment with running local models (MLX / Ollama).
+
+On a machine with limited unified memory, inference is sensitive to whatever else
+is competing for CPU, GPU, the Neural Engine, and memory bandwidth. macOS quietly
+runs a lot of background work — Spotlight indexing, Photos ML analysis, Time
+Machine, iCloud sync, software-update downloads, and more — that spins up and down
+at unpredictable times and noticeably affects performance.
+
+I wanted two things:
+
+1. an easy way to **turn that background work off** before a session to free up
+   resources, and
+2. an equally easy way to **put everything back to normal** afterward — because,
+   again, it's my wife's MacBook 🙂
+
+That's why Smoggle is built around **profiles** (apply a performance preset in one
+click) and **snapshots** (capture the current state, then restore it later — and
+the *Default* profile resets every toggle to its macOS default). Maximize
+performance when you want it; leave no trace when you're done.
+
+---
+
 ## Quick Start
 
 ### 1. Clone
