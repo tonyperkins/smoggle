@@ -2,9 +2,11 @@
 routers/targets.py — CRUD for target Macs.
 On create: attempts SSH connection to auto-detect macOS version.
 """
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -13,6 +15,30 @@ from backend.executor import build_executor as _make_executor, async_run, async_
 
 router = APIRouter(prefix="/api/targets", tags=["targets"])
 
+# Defense-in-depth: host/username are passed to paramiko as connection params
+# (never shell-interpolated today), but constrain them to safe charsets so they
+# can never become an injection vector if that ever changes.
+_HOST_RE = re.compile(r"^[A-Za-z0-9.\-]+$")
+_USERNAME_RE = re.compile(r"^[a-z_][a-z0-9_-]*$")
+
+
+def _check_host(v: str) -> str:
+    if not v or len(v) > 255 or not _HOST_RE.match(v):
+        raise ValueError("host must be a hostname or IP (letters, digits, dots, hyphens)")
+    return v
+
+
+def _check_username(v: str) -> str:
+    if len(v) > 32 or not _USERNAME_RE.match(v):
+        raise ValueError("username must start with a letter/underscore and use [a-z0-9_-]")
+    return v
+
+
+def _check_port(v: int) -> int:
+    if not (1 <= v <= 65535):
+        raise ValueError("port must be between 1 and 65535")
+    return v
+
 
 class TargetCreate(BaseModel):
     name: str
@@ -20,12 +46,42 @@ class TargetCreate(BaseModel):
     port: int = 22
     username: str
 
+    @field_validator("host")
+    @classmethod
+    def _v_host(cls, v):
+        return _check_host(v)
+
+    @field_validator("username")
+    @classmethod
+    def _v_user(cls, v):
+        return _check_username(v)
+
+    @field_validator("port")
+    @classmethod
+    def _v_port(cls, v):
+        return _check_port(v)
+
 
 class TargetUpdate(BaseModel):
     name: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
     username: Optional[str] = None
+
+    @field_validator("host")
+    @classmethod
+    def _v_host(cls, v):
+        return v if v is None else _check_host(v)
+
+    @field_validator("username")
+    @classmethod
+    def _v_user(cls, v):
+        return v if v is None else _check_username(v)
+
+    @field_validator("port")
+    @classmethod
+    def _v_port(cls, v):
+        return v if v is None else _check_port(v)
 
 
 
@@ -126,22 +182,13 @@ async def kill_process(
         raise HTTPException(status_code=403, detail=f"Process '{proc_name}' is protected and cannot be killed")
 
     sig = "SIGKILL" if force else "SIGTERM"
-    sig_flag = f"-{sig}"
+    sig_flag = "-KILL" if force else "-TERM"
 
-    safe_name = proc_name.replace("'", "'\\''")
-
-    if not force:
-        # For GUI apps, try osascript quit first — respects app lifecycle properly.
-        # Falls back to pkill SIGTERM if osascript fails (non-GUI / no bundle).
-        osa_name = proc_name.replace('"', '\\"')
-        cmd = (
-            f'osascript -e \'tell application "{osa_name}" to quit\' 2>/dev/null'
-            f" || pkill -SIGTERM -x '{safe_name}' 2>/dev/null"
-            f"; echo __exit__$?"
-        )
-    else:
-        # Force: SIGKILL — cannot be caught or ignored
-        cmd = f"pkill -SIGKILL -x '{safe_name}' 2>&1; echo __exit__$?"
+    # Kill strictly by integer PID (FastAPI has already validated it as an int),
+    # so the process name — sourced from remote `ps` output — is never
+    # interpolated into a shell command. The name is used only for the
+    # protection check above and the response.
+    cmd = f"kill {sig_flag} {pid} 2>&1; echo __exit__$?"
 
     stdout, stderr, code = await async_run(executor, cmd)
 
@@ -157,11 +204,11 @@ async def kill_process(
             output_lines.append(line)
     output = "\n".join(output_lines).strip()
 
-    # pkill exit 1 = no matching process found (already dead is fine)
+    # kill exit 1 = no such process (already dead is fine)
     if exit_code not in (0, 1):
         raise HTTPException(
             status_code=500,
-            detail=output or stderr.strip() or f"pkill exited {exit_code}"
+            detail=output or stderr.strip() or f"kill exited {exit_code}"
         )
 
     return {"ok": True, "pid": pid, "signal": sig, "process": proc_name}

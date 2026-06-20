@@ -20,8 +20,10 @@ import os
 import secrets
 
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
+from backend.ratelimit import auth_failures, client_ip
 
 _security = HTTPBasic(auto_error=False)
 
@@ -76,7 +78,10 @@ def ensure_credentials() -> None:
     _password_hash()
 
 
-def require_auth(creds: HTTPBasicCredentials = Depends(_security)) -> str:
+def require_auth(
+    request: Request,
+    creds: HTTPBasicCredentials = Depends(_security),
+) -> str:
     """FastAPI dependency: enforce Basic Auth, return the authenticated username."""
     supplied_user = creds.username if creds else ""
     supplied_pass = (creds.password if creds else "").encode("utf-8")
@@ -87,6 +92,13 @@ def require_auth(creds: HTTPBasicCredentials = Depends(_security)) -> str:
     pass_ok = bcrypt.checkpw(supplied_pass, expected_hash if user_ok else _DUMMY_HASH)
 
     if not (user_ok and pass_ok):
+        # Throttle brute force: each failed attempt consumes a token per IP.
+        if not auth_failures.allow(client_ip(request)):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed attempts — try again later.",
+                headers={"WWW-Authenticate": "Basic"},
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",

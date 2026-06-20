@@ -171,6 +171,9 @@ export default function History() {
                     <ProfileTag profile={h.profile} />
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    {h.actor && (
+                      <span className="text-xs text-slate-500 whitespace-nowrap">by {h.actor}</span>
+                    )}
                     <span className="text-xs text-slate-500 whitespace-nowrap">
                       {new Date(h.timestamp).toLocaleString()}
                     </span>

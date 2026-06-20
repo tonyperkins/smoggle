@@ -16,6 +16,7 @@ from backend.executor import build_executor as _make_executor, async_run
 from backend.toggles_registry import TOGGLES_BY_ID
 from backend.profiles_registry import PROFILES, PROFILE_META
 from backend.helper import run_toggle_cmd
+from backend.auth import require_auth
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 
@@ -30,6 +31,7 @@ async def apply_profile(
     name: str,
     body: ApplyProfileBody,
     session: Session = Depends(get_session),
+    actor: str = Depends(require_auth),
 ):
     """
     Apply a named profile sequentially to the target Mac.
@@ -113,6 +115,7 @@ async def apply_profile(
             profile=name,
             success=success,
             stderr=stderr or None,
+            actor=actor,
             timestamp=datetime.utcnow(),
         )
         session.add(history)
