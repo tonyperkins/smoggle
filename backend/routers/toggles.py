@@ -12,9 +12,8 @@ from sqlmodel import Session
 from pydantic import BaseModel
 
 from backend.database import get_session, Target, ToggleHistory
-from backend.executor import SSHExecutor, async_run
+from backend.executor import build_executor as _make_executor, async_run, SSHExecutor
 from backend.toggles_registry import TOGGLES, TOGGLES_BY_ID
-from backend import ssh_identity
 
 router = APIRouter(prefix="/api/toggles", tags=["toggles"])
 
@@ -31,13 +30,6 @@ def _get_target_or_404(target_id: int, session: Session) -> Target:
     return target
 
 
-def _make_executor(target: Target) -> SSHExecutor:
-    return SSHExecutor(
-        host=target.host,
-        username=target.username,
-        key_path=ssh_identity.KEY_PATH,
-        port=target.port,
-    )
 
 
 async def _check_supported(executor: SSHExecutor, toggle: dict) -> bool:
@@ -90,8 +82,10 @@ async def list_toggles(target: int, session: Session = Depends(get_session)):
 
     results = await asyncio.gather(*[fetch(t) for t in TOGGLES])
 
-    # Update last_seen
+    # Update last_seen and pin the host key on first contact (TOFU)
     tgt.last_seen = datetime.utcnow()
+    if executor.captured_fingerprint and not tgt.host_key_fingerprint:
+        tgt.host_key_fingerprint = executor.captured_fingerprint
     session.add(tgt)
     session.commit()
 

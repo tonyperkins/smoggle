@@ -14,9 +14,8 @@ from sqlmodel import Session, select
 from pydantic import BaseModel
 
 from backend.database import get_session, Target, Snapshot, ToggleHistory
-from backend.executor import SSHExecutor, async_run
+from backend.executor import build_executor as _make_executor, async_run
 from backend.toggles_registry import TOGGLES, TOGGLES_BY_ID
-from backend import ssh_identity
 
 router = APIRouter(prefix="/api/snapshots", tags=["snapshots"])
 
@@ -26,13 +25,6 @@ class SnapshotCreate(BaseModel):
     name: str
 
 
-def _make_executor(target: Target) -> SSHExecutor:
-    return SSHExecutor(
-        host=target.host,
-        username=target.username,
-        key_path=ssh_identity.KEY_PATH,
-        port=target.port,
-    )
 
 
 @router.get("")

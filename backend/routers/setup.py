@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from datetime import datetime
 
 from backend.database import get_session, Target
-from backend.executor import SSHExecutor, async_run, async_test_connection
+from backend.executor import build_executor as _make_executor, async_run
 from backend import ssh_identity
 
 router = APIRouter(prefix="/api", tags=["setup"])
@@ -20,15 +20,6 @@ class TestConnectionBody(BaseModel):
 
 class TestSudoBody(BaseModel):
     target_id: int
-
-
-def _make_executor(target: Target) -> SSHExecutor:
-    return SSHExecutor(
-        host=target.host,
-        username=target.username,
-        key_path=ssh_identity.KEY_PATH,
-        port=target.port,
-    )
 
 
 @router.get("/identity/public-key", response_class=PlainTextResponse)
@@ -72,23 +63,39 @@ async def test_connection(body: TestConnectionBody, session: Session = Depends(g
         raise HTTPException(status_code=404, detail="Target not found")
 
     executor = _make_executor(target)
-    ok = await async_test_connection(executor)
+    # Run a probe directly (rather than the bool-only test_connection) so we can
+    # inspect stderr — a pinned-host-key mismatch surfaces there.
+    stdout, stderr, code = await async_run(executor, "echo ok")
+    ok = code == 0 and stdout.strip() == "ok"
 
     if ok:
         # Opportunistically refresh macOS version and last_seen
         try:
-            stdout, _, code = await async_run(executor, "sw_vers -productVersion")
-            if code == 0 and stdout.strip():
-                target.macos_version = stdout.strip()
+            v_out, _, v_code = await async_run(executor, "sw_vers -productVersion")
+            if v_code == 0 and v_out.strip():
+                target.macos_version = v_out.strip()
         except Exception:
             pass
+        # Pin the host key on first contact (trust-on-first-use)
+        if executor.captured_fingerprint and not target.host_key_fingerprint:
+            target.host_key_fingerprint = executor.captured_fingerprint
         target.last_seen = datetime.utcnow()
         session.add(target)
         session.commit()
 
+    if ok:
+        message = "SSH connection successful"
+    elif "host key changed" in stderr.lower():
+        message = (
+            "Host key changed — possible MITM, or the Mac was reinstalled. "
+            "Clear the stored fingerprint to re-trust this host."
+        )
+    else:
+        message = "SSH connection failed — check host, key path, and username"
+
     return {
         "success": ok,
-        "message": "SSH connection successful" if ok else "SSH connection failed — check host, key path, and username",
+        "message": message,
         "target_id": body.target_id,
         "host": target.host,
         "macos_version": target.macos_version,

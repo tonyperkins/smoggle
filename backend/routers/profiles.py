@@ -12,10 +12,9 @@ from sqlmodel import Session
 from pydantic import BaseModel
 
 from backend.database import get_session, Target, ToggleHistory
-from backend.executor import SSHExecutor, async_run
+from backend.executor import build_executor as _make_executor, async_run
 from backend.toggles_registry import TOGGLES_BY_ID
 from backend.profiles_registry import PROFILES, PROFILE_META
-from backend import ssh_identity
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 
@@ -23,15 +22,6 @@ router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 class ApplyProfileBody(BaseModel):
     target_id: int
     confirm: Optional[str] = None
-
-
-def _make_executor(target: Target) -> SSHExecutor:
-    return SSHExecutor(
-        host=target.host,
-        username=target.username,
-        key_path=ssh_identity.KEY_PATH,
-        port=target.port,
-    )
 
 
 @router.post("/{name}/apply")

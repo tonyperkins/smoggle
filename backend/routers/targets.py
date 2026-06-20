@@ -9,8 +9,7 @@ from typing import Optional
 from datetime import datetime
 
 from backend.database import get_session, Target
-from backend.executor import SSHExecutor, async_run, async_test_connection
-from backend import ssh_identity
+from backend.executor import build_executor as _make_executor, async_run, async_test_connection
 
 router = APIRouter(prefix="/api/targets", tags=["targets"])
 
@@ -29,13 +28,6 @@ class TargetUpdate(BaseModel):
     username: Optional[str] = None
 
 
-def _make_executor(target: Target) -> SSHExecutor:
-    return SSHExecutor(
-        host=target.host,
-        username=target.username,
-        key_path=ssh_identity.KEY_PATH,
-        port=target.port,
-    )
 
 
 @router.get("")
@@ -56,6 +48,9 @@ async def create_target(body: TargetCreate, session: Session = Depends(get_sessi
         stdout, _, code = await async_run(executor, "sw_vers -productVersion")
         if code == 0 and stdout.strip():
             target.macos_version = stdout.strip()
+        # Pin the host key on first contact (trust-on-first-use)
+        if executor.captured_fingerprint and not target.host_key_fingerprint:
+            target.host_key_fingerprint = executor.captured_fingerprint
         target.last_seen = datetime.utcnow()
         session.add(target)
         session.commit()
