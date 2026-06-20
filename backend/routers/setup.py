@@ -15,6 +15,13 @@ from backend.ratelimit import limit_probes
 
 router = APIRouter(prefix="/api", tags=["setup"])
 
+# Endpoints that must be reachable WITHOUT dashboard auth: the enrollment script
+# is fetched by `curl … | sudo sh` on the target Mac (which has no dashboard
+# credentials), and the public-key endpoint just echoes a public key. Neither
+# exposes a secret — enroll.sh embeds the app's *public* key and the helper
+# command allowlist. main.py includes this router without the auth dependency.
+public_router = APIRouter(prefix="/api", tags=["setup"])
+
 
 class TestConnectionBody(BaseModel):
     target_id: int
@@ -24,7 +31,7 @@ class TestSudoBody(BaseModel):
     target_id: int
 
 
-@router.get("/identity/public-key", response_class=PlainTextResponse)
+@public_router.get("/identity/public-key", response_class=PlainTextResponse)
 async def identity_public_key():
     """Return Smoggle's managed SSH public key (for display in the UI)."""
     return ssh_identity.get_public_key()
@@ -86,7 +93,7 @@ fi
 """
 
 
-@router.get("/enroll.sh", response_class=PlainTextResponse)
+@public_router.get("/enroll.sh", response_class=PlainTextResponse)
 async def enroll_script():
     """Single onboarding script for a target Mac.
 
