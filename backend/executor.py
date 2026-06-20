@@ -125,7 +125,11 @@ class SSHExecutor(BaseExecutor):
         with cmd_lock:
             try:
                 client = self._get_client()
-                _, stdout_f, stderr_f = client.exec_command(command, timeout=self.timeout)
+                # Commands are not free-form user input: toggle/profile commands
+                # come from the fixed registry (toggles_registry.py), privileged
+                # ones run through the smoggle-helper allowlist, and the only
+                # interpolated value (kill <pid>) is an int validated by FastAPI.
+                _, stdout_f, stderr_f = client.exec_command(command, timeout=self.timeout)  # nosec B601
                 exit_code = stdout_f.channel.recv_exit_status()
                 stdout = stdout_f.read().decode("utf-8", errors="replace").strip()
                 stderr = stderr_f.read().decode("utf-8", errors="replace").strip()
