@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Wifi, ShieldCheck, CheckCircle2, XCircle, Loader2, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Wifi, ShieldCheck, CheckCircle2, XCircle, Loader2, ChevronDown, ChevronUp, Pencil, Copy, Check } from 'lucide-react'
 import { useTarget } from '../App.jsx'
 
 const FIELD_DEFS = [
@@ -11,11 +11,14 @@ const FIELD_DEFS = [
   { key: 'host',     label: 'Host / IP',     type: 'text',   placeholder: '192.168.1.100'           },
   { key: 'port',     label: 'SSH Port',      type: 'number', placeholder: '22'                      },
   { key: 'username', label: 'SSH Username',  type: 'text',   placeholder: 'your_username'           },
-  { key: 'key_path', label: 'SSH Key Path',  type: 'text',   placeholder: '/root/.ssh/smoggle_ed25519 (absolute path inside container)' },
 ]
 
+// The enroll script installs Smoggle's managed public key on the target Mac.
+// Built from the browser origin so it points back at this server.
+const ENROLL_CMD = `curl -fsSL ${window.location.origin}/api/enroll.sh | sh`
+
 function AddMacForm({ onAdded, onCancel }) {
-  const [form, setForm]   = useState({ name: '', host: '', port: 22, username: '', key_path: '' })
+  const [form, setForm]   = useState({ name: '', host: '', port: 22, username: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState(null)
 
@@ -46,7 +49,7 @@ function AddMacForm({ onAdded, onCancel }) {
       <h3 className="text-slate-100 font-semibold">Add Target Mac</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {FIELD_DEFS.map(({ key, label, type, placeholder }) => (
-          <div key={key} className={`flex flex-col gap-1 ${key === 'key_path' ? 'sm:col-span-2' : ''}`}>
+          <div key={key} className="flex flex-col gap-1">
             <label className="text-xs text-slate-400 font-medium">{label}</label>
             <input
               type={type}
@@ -91,7 +94,6 @@ function EditMacForm({ target, onSaved, onCancel }) {
     host: target.host,
     port: target.port,
     username: target.username,
-    key_path: target.key_path,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState(null)
@@ -124,7 +126,7 @@ function EditMacForm({ target, onSaved, onCancel }) {
       <h4 className="text-slate-300 text-xs font-semibold uppercase tracking-wide">Edit</h4>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {FIELD_DEFS.map(({ key, label, type, placeholder }) => (
-          <div key={key} className={`flex flex-col gap-1 ${key === 'key_path' ? 'sm:col-span-2' : ''}`}>
+          <div key={key} className="flex flex-col gap-1">
             <label className="text-xs text-slate-400 font-medium">{label}</label>
             <input
               type={type}
@@ -160,6 +162,44 @@ function EditMacForm({ target, onSaved, onCancel }) {
         </button>
       </div>
     </form>
+  )
+}
+
+function EnrollBlock({ macName }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(ENROLL_CMD)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* clipboard unavailable — user can still select the text manually */
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 space-y-2">
+      <p className="text-xs text-slate-400">
+        Run this in Terminal on <span className="text-slate-300 font-medium">{macName}</span> to
+        authorise Smoggle, then click <span className="text-slate-300">Test SSH</span>:
+      </p>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 min-w-0 truncate font-mono text-xs text-slate-200 bg-slate-800
+                         border border-slate-700 rounded px-2.5 py-1.5" title={ENROLL_CMD}>
+          {ENROLL_CMD}
+        </code>
+        <button
+          onClick={copy}
+          className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600
+                     text-slate-200 text-xs rounded-lg transition-colors"
+          title="Copy command"
+        >
+          {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -278,9 +318,6 @@ export default function Settings() {
                   <p className="text-slate-400 text-sm font-mono mt-0.5">
                     {t.username}@{t.host}:{t.port}
                   </p>
-                  <p className="text-slate-500 text-xs mt-0.5 font-mono truncate" title={t.key_path}>
-                    {t.key_path}
-                  </p>
                   {t.macos_version && (
                     <p className="text-slate-500 text-xs mt-0.5">macOS {t.macos_version}</p>
                   )}
@@ -328,7 +365,8 @@ export default function Settings() {
 
               {/* Expanded test panel */}
               {isExpanded && (
-                <div className="border-t border-slate-700 px-4 py-3 space-y-2 bg-slate-800/60">
+                <div className="border-t border-slate-700 px-4 py-3 space-y-3 bg-slate-800/60">
+                  <EnrollBlock macName={t.name} />
                   <div className="flex gap-2">
                     <button
                       onClick={() => runTest('test-connection', t.id)}

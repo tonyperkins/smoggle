@@ -8,12 +8,14 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from backend.database import init_db
+from backend import ssh_identity
 from backend.routers import targets, toggles, profiles, snapshots, status, setup, history
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    ssh_identity.ensure_identity()
     yield
 
 

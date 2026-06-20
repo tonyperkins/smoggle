@@ -20,7 +20,11 @@ class Target(SQLModel, table=True):
     host: str
     port: int = 22
     username: str
-    key_path: str
+    # Legacy column — the app now authenticates with its own managed identity
+    # key (see ssh_identity.py), so this value is unused. Defaults to "" rather
+    # than NULL so inserts satisfy the original NOT NULL constraint on DBs
+    # created before enrollment existed (create_all won't alter the column).
+    key_path: str = ""
     macos_version: Optional[str] = None
     last_seen: Optional[datetime] = None
 

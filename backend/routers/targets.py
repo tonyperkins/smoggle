@@ -10,6 +10,7 @@ from datetime import datetime
 
 from backend.database import get_session, Target
 from backend.executor import SSHExecutor, async_run, async_test_connection
+from backend import ssh_identity
 
 router = APIRouter(prefix="/api/targets", tags=["targets"])
 
@@ -19,7 +20,6 @@ class TargetCreate(BaseModel):
     host: str
     port: int = 22
     username: str
-    key_path: str
 
 
 class TargetUpdate(BaseModel):
@@ -27,14 +27,13 @@ class TargetUpdate(BaseModel):
     host: Optional[str] = None
     port: Optional[int] = None
     username: Optional[str] = None
-    key_path: Optional[str] = None
 
 
 def _make_executor(target: Target) -> SSHExecutor:
     return SSHExecutor(
         host=target.host,
         username=target.username,
-        key_path=target.key_path,
+        key_path=ssh_identity.KEY_PATH,
         port=target.port,
     )
 

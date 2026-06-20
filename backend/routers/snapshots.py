@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from backend.database import get_session, Target, Snapshot, ToggleHistory
 from backend.executor import SSHExecutor, async_run
 from backend.toggles_registry import TOGGLES, TOGGLES_BY_ID
+from backend import ssh_identity
 
 router = APIRouter(prefix="/api/snapshots", tags=["snapshots"])
 
@@ -29,7 +30,7 @@ def _make_executor(target: Target) -> SSHExecutor:
     return SSHExecutor(
         host=target.host,
         username=target.username,
-        key_path=target.key_path,
+        key_path=ssh_identity.KEY_PATH,
         port=target.port,
     )
 

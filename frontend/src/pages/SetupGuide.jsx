@@ -154,14 +154,21 @@ export default function SetupGuide() {
           <CodeBlock code="sudo lsof -i :22" />
         </Step>
 
-        <Step n={2} title="Generate a dedicated SSH key on your Docker/Linux host (one-time per Mac)">
-          <CodeBlock code={`ssh-keygen -t ed25519 -C "smoggle" -f ~/.ssh/smoggle_ed25519`} />
+        <Step n={2} title="Add the target Mac in Settings">
+          <p className="text-slate-400 text-sm">
+            Go to <Link to="/settings" className="text-blue-400 hover:underline">Settings</Link> and click{' '}
+            <strong className="text-slate-300">Add Mac</strong> with just the hostname and username.
+            Smoggle manages its own SSH key — there's nothing to generate or place yourself.
+          </p>
         </Step>
 
-        <Step n={3} title="Install the public key on each target Mac">
-          <CodeBlock code="ssh-copy-id -i ~/.ssh/smoggle_ed25519.pub <YOUR_USERNAME>@<MAC_IP>" />
-          <p className="text-slate-500 text-xs">Verify it works:</p>
-          <CodeBlock code={`ssh -i ~/.ssh/smoggle_ed25519 <YOUR_USERNAME>@<MAC_IP> echo "Smoggle connection OK"`} />
+        <Step n={3} title="Authorise Smoggle on the Mac">
+          <p className="text-slate-400 text-sm">
+            Expand the Mac's card in Settings and copy the one-line command shown there, then run it in{' '}
+            <strong className="text-slate-300">Terminal on the Mac</strong>. It appends Smoggle's managed
+            public key to <code className="text-slate-300">~/.ssh/authorized_keys</code>. The command looks like:
+          </p>
+          <CodeBlock code="curl -fsSL http://<SMOGGLE_HOST>:7420/api/enroll.sh | sh" />
         </Step>
 
         <Step n={4} title="Set up passwordless sudo on each target Mac">
@@ -170,15 +177,7 @@ export default function SetupGuide() {
           <CodeBlock code="<YOUR_USERNAME> ALL=(ALL) NOPASSWD: /usr/sbin/mdutil, /usr/bin/tmutil, /usr/bin/pmset, /usr/sbin/softwareupdate, /bin/launchctl, /usr/bin/defaults" />
         </Step>
 
-        <Step n={5} title="Add the target Mac in Settings">
-          <p className="text-slate-400 text-sm">
-            Go to <Link to="/settings" className="text-blue-400 hover:underline">Settings</Link> and click{' '}
-            <strong className="text-slate-300">Add Mac</strong> with the hostname, username, and key path.
-            macOS version will be auto-detected on first connection.
-          </p>
-        </Step>
-
-        <Step n={6} title="Test the connection and sudo access">
+        <Step n={5} title="Test the connection and sudo access">
           {targets.length === 0 ? (
             <p className="text-slate-500 text-sm">
               Add a Mac in <Link to="/settings" className="text-blue-400 hover:underline">Settings</Link> first.

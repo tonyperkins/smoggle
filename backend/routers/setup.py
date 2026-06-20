@@ -2,12 +2,14 @@
 routers/setup.py — SSH connection test and passwordless sudo test.
 """
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import PlainTextResponse
 from sqlmodel import Session
 from pydantic import BaseModel
 from datetime import datetime
 
 from backend.database import get_session, Target
 from backend.executor import SSHExecutor, async_run, async_test_connection
+from backend import ssh_identity
 
 router = APIRouter(prefix="/api", tags=["setup"])
 
@@ -24,9 +26,42 @@ def _make_executor(target: Target) -> SSHExecutor:
     return SSHExecutor(
         host=target.host,
         username=target.username,
-        key_path=target.key_path,
+        key_path=ssh_identity.KEY_PATH,
         port=target.port,
     )
+
+
+@router.get("/identity/public-key", response_class=PlainTextResponse)
+async def identity_public_key():
+    """Return Smoggle's managed SSH public key (for display in the UI)."""
+    return ssh_identity.get_public_key()
+
+
+@router.get("/enroll.sh", response_class=PlainTextResponse)
+async def enroll_script():
+    """A shell script the user runs on a target Mac to authorise Smoggle.
+
+    Appends the app's managed public key to ~/.ssh/authorized_keys (idempotent),
+    creating the .ssh dir with correct permissions if needed. No secret leaves
+    the backend — only the public key is embedded.
+    """
+    pubkey = ssh_identity.get_public_key()
+    # Single-quote the key for the shell; it contains no single quotes.
+    script = f"""#!/bin/sh
+set -e
+KEY='{pubkey}'
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+touch "$HOME/.ssh/authorized_keys"
+chmod 600 "$HOME/.ssh/authorized_keys"
+if grep -qF "$KEY" "$HOME/.ssh/authorized_keys"; then
+  echo "Smoggle key already authorised."
+else
+  echo "$KEY" >> "$HOME/.ssh/authorized_keys"
+  echo "Smoggle key authorised. You can now Test SSH from the dashboard."
+fi
+"""
+    return script
 
 
 @router.post("/test-connection")
