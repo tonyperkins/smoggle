@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from backend.database import get_session, Target, ToggleHistory
 from backend.executor import build_executor as _make_executor, async_run, SSHExecutor
+from backend.helper import run_toggle_cmd
 from backend.toggles_registry import TOGGLES, TOGGLES_BY_ID
 
 router = APIRouter(prefix="/api/toggles", tags=["toggles"])
@@ -54,7 +55,7 @@ async def _read_live_state(executor: SSHExecutor, toggle: dict) -> str:
         return "unsupported"
 
     try:
-        stdout, stderr, code = await async_run(executor, toggle["cmd_status"])
+        stdout, stderr, code = await run_toggle_cmd(executor, toggle, "status")
     except Exception:
         return "unknown"
 
@@ -125,8 +126,7 @@ async def apply_toggle(
     # Read current state before applying
     old_state = await _read_live_state(executor, toggle)
 
-    cmd = toggle["cmd_on"] if body.state == "on" else toggle["cmd_off"]
-    stdout, stderr, exit_code = await async_run(executor, cmd)
+    stdout, stderr, exit_code = await run_toggle_cmd(executor, toggle, body.state)
 
     # Re-read live state to confirm the change actually took effect.
     # Some macOS tools (e.g. mdutil) exit non-zero even on success, so we

@@ -15,6 +15,7 @@ from backend.database import get_session, Target, ToggleHistory
 from backend.executor import build_executor as _make_executor, async_run
 from backend.toggles_registry import TOGGLES_BY_ID
 from backend.profiles_registry import PROFILES, PROFILE_META
+from backend.helper import run_toggle_cmd
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 
@@ -89,18 +90,16 @@ async def apply_profile(
                 })
                 continue
 
-        cmd = toggle["cmd_on"] if desired_state == "on" else toggle["cmd_off"]
-
         # Read old state — use last non-empty line (handles multi-line cmd_status output)
-        old_stdout, _, _ = await async_run(executor, toggle["cmd_status"])
+        old_stdout, _, _ = await run_toggle_cmd(executor, toggle, "status")
         old_lines = [ln.strip().strip("\r") for ln in old_stdout.splitlines() if ln.strip()]
         old_val = old_lines[-1] if old_lines else ""
         old_state = "on" if old_val == "1" else "off" if old_val == "0" else "unknown"
 
-        stdout, stderr, exit_code = await async_run(executor, cmd)
+        stdout, stderr, exit_code = await run_toggle_cmd(executor, toggle, desired_state)
 
         # Verify by re-reading state — some tools (e.g. mdutil) exit non-zero even on success
-        new_stdout, _, _ = await async_run(executor, toggle["cmd_status"])
+        new_stdout, _, _ = await run_toggle_cmd(executor, toggle, "status")
         new_lines = [ln.strip().strip("\r") for ln in new_stdout.splitlines() if ln.strip()]
         new_val = new_lines[-1] if new_lines else ""
         actual_state = "on" if new_val == "1" else "off" if new_val == "0" else "unknown"

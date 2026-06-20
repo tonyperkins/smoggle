@@ -165,19 +165,20 @@ export default function SetupGuide() {
         <Step n={3} title="Authorise Smoggle on the Mac">
           <p className="text-slate-400 text-sm">
             Expand the Mac's card in Settings and copy the one-line command shown there, then run it in{' '}
-            <strong className="text-slate-300">Terminal on the Mac</strong>. It appends Smoggle's managed
-            public key to <code className="text-slate-300">~/.ssh/authorized_keys</code>. The command looks like:
+            <strong className="text-slate-300">Terminal on the Mac</strong>. Run with{' '}
+            <strong className="text-slate-300">sudo</strong> it authorises Smoggle's SSH key{' '}
+            <em>and</em> installs a small root-owned <code className="text-slate-300">smoggle-helper</code>{' '}
+            that allows <em>only</em> Smoggle's exact privileged operations (no broad sudo):
+          </p>
+          <CodeBlock code="curl -fsSL http://<SMOGGLE_HOST>:7420/api/enroll.sh | sudo sh" />
+          <p className="text-slate-500 text-xs">
+            Don't need the privileged toggles (Spotlight, Time Machine, software updates, etc.)?
+            Run it without <code className="text-slate-400">sudo</code> to install the SSH key only:
           </p>
           <CodeBlock code="curl -fsSL http://<SMOGGLE_HOST>:7420/api/enroll.sh | sh" />
         </Step>
 
-        <Step n={4} title="Set up passwordless sudo on each target Mac">
-          <CodeBlock code="sudo visudo -f /etc/sudoers.d/smoggle" />
-          <p className="text-slate-400 text-xs">Add this line (replace username if needed):</p>
-          <CodeBlock code="<YOUR_USERNAME> ALL=(ALL) NOPASSWD: /usr/sbin/mdutil, /usr/bin/tmutil, /usr/bin/pmset, /usr/sbin/softwareupdate, /bin/launchctl, /usr/bin/defaults" />
-        </Step>
-
-        <Step n={5} title="Test the connection and sudo access">
+        <Step n={4} title="Test the connection and sudo access">
           {targets.length === 0 ? (
             <p className="text-slate-500 text-sm">
               Add a Mac in <Link to="/settings" className="text-blue-400 hover:underline">Settings</Link> first.
