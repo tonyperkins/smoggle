@@ -15,58 +15,71 @@ git clone <repo> smoggle
 cd smoggle
 ```
 
-### 2. SSH Key Setup (on your Docker/Linux host — one time per Mac)
-
-```bash
-ssh-keygen -t ed25519 -C "smoggle" -f ~/.ssh/smoggle_ed25519
-ssh-copy-id -i ~/.ssh/smoggle_ed25519.pub <YOUR_USERNAME>@<MAC_IP>
-ssh -i ~/.ssh/smoggle_ed25519 <YOUR_USERNAME>@<MAC_IP> echo "Smoggle connection OK"
-```
-
-### 3. Passwordless sudo on each target Mac
-
-```bash
-sudo visudo -f /etc/sudoers.d/smoggle
-```
-
-Add:
-```
-<YOUR_USERNAME> ALL=(ALL) NOPASSWD: /usr/sbin/mdutil, /usr/bin/tmutil, /usr/bin/pmset, /usr/sbin/softwareupdate, /bin/launchctl, /usr/bin/defaults
-```
-
-### 4. Build and Deploy
+### 2. Build and run
 
 ```bash
 docker compose up -d --build
 ```
 
-Smoggle runs on port **7420**.
+Smoggle runs on port **7420**. Health check: `curl http://localhost:7420/health`
 
-Health check: `curl http://localhost:7420/health`
+### 3. Sign in
 
-### 5. Caddy Reverse Proxy (optional)
+The dashboard is protected by HTTP Basic Auth. On first boot Smoggle generates a
+random admin password and prints it **once** to the container log:
 
-Add to your Caddyfile:
+```bash
+docker compose logs smoggle | grep -A4 "admin password"
+```
+
+Default username is `admin`. To set your own credentials, provide
+`SMOGGLE_AUTH_USER` and a bcrypt `SMOGGLE_AUTH_PASSWORD_HASH` and restart — see
+[SECURITY.md](SECURITY.md).
+
+### 4. Add a target Mac
+
+First enable Remote Login (SSH) on the Mac:
+
+```bash
+sudo systemsetup -setremotelogin on
+```
+
+Then in **Settings → Add Mac**, enter the Mac's hostname/IP and SSH username.
+Smoggle manages its own SSH key — there is nothing to generate or copy yourself.
+
+### 5. Enroll the Mac
+
+Expand the Mac's card (or open the **Setup Guide**) and copy the one-line
+command, then run it in **Terminal on the Mac**:
+
+```bash
+# Recommended — authorises Smoggle's SSH key AND installs a root-owned
+# allowlist (smoggle-helper) for its exact privileged operations. No broad sudo.
+curl -fsSL http://<SMOGGLE_HOST>:7420/api/enroll.sh | sudo sh
+
+# Key only (user-level toggles work; privileged ones disabled) — omit sudo:
+curl -fsSL http://<SMOGGLE_HOST>:7420/api/enroll.sh | sh
+```
+
+Then click **Test SSH** and **Test Sudo** on the card to confirm.
+
+### 6. Use the dashboard
+
+Return to the Dashboard — toggle cards load with live state.
+
+### 7. TLS / remote access (optional)
+
+Smoggle is intended for a **private network**. To reach it remotely, front it
+with a reverse proxy that terminates TLS (or use a Tailscale/WireGuard tailnet):
 
 ```
 smoggle.yourdomain.com {
-    # TODO v2: uncomment to enable Basic Auth
-    # basicauth {
-    #     youruser <bcrypt_hash>   # generate: caddy hash-password
-    # }
     reverse_proxy smoggle:7420
 }
 ```
 
-Reload Caddy: `caddy reload`
-
-### 6. First Run
-
-1. Open `http://localhost:7420` (or your Caddy domain)
-2. You'll be redirected to the **Setup Guide** page
-3. Follow the numbered steps to verify SSH and sudo access
-4. Add your target Mac(s) in **Settings**
-5. Return to the Dashboard — toggle cards will load with live state
+Dashboard auth is handled by the app itself (no proxy auth needed). See
+[SECURITY.md](SECURITY.md) for the threat model and deployment guidance.
 
 ---
 
@@ -110,7 +123,9 @@ npm run dev   # http://localhost:5173 — proxies /api to :7420
 - **Backend**: FastAPI + SQLModel (SQLite) + Paramiko SSH
 - **Frontend**: React 18 + Vite + Tailwind CSS
 - **SSE**: Resource monitor pushed every 3s — no polling
-- **Auth**: Stubbed in v1 — deploy on trusted internal network
+- **Auth**: HTTP Basic Auth on all API routes; SSH host-key pinning; privileged
+  Mac operations confined to a root-owned allowlist. Intended for a private
+  network — see [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -129,5 +144,5 @@ npm run dev   # http://localhost:5173 — proxies /api to :7420
 
 - Apple Silicon only — no Intel Mac support
 - No localStorage — all state in SQLite
-- Auth stubbed — v2 will add Basic Auth via Caddy
+- Security model and deployment guidance: [SECURITY.md](SECURITY.md)
 - Local mode stubbed — `LocalExecutor` raises `NotImplementedError`
