@@ -53,6 +53,7 @@ async def get_history(
             "profile":     row.profile,
             "success":     row.success,
             "stderr":      row.stderr,
+            "actor":       row.actor,
             "timestamp":   row.timestamp,
         }
         for row in rows

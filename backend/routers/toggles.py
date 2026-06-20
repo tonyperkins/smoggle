@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from backend.database import get_session, Target, ToggleHistory
 from backend.executor import build_executor as _make_executor, async_run, SSHExecutor
 from backend.helper import run_toggle_cmd
+from backend.auth import require_auth
 from backend.toggles_registry import TOGGLES, TOGGLES_BY_ID
 
 router = APIRouter(prefix="/api/toggles", tags=["toggles"])
@@ -110,6 +111,7 @@ async def apply_toggle(
     toggle_id: str,
     body: ApplyToggleBody,
     session: Session = Depends(get_session),
+    actor: str = Depends(require_auth),
 ):
     """Apply a toggle state change via SSH and record to history."""
     if toggle_id not in TOGGLES_BY_ID:
@@ -142,6 +144,7 @@ async def apply_toggle(
         new_state=body.state,
         success=success,
         stderr=stderr or None,
+        actor=actor,
         timestamp=datetime.utcnow(),
     )
     session.add(history)

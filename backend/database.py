@@ -42,6 +42,8 @@ class ToggleHistory(SQLModel, table=True):
     profile: Optional[str] = None
     success: bool = True
     stderr: Optional[str] = None
+    # Authenticated dashboard user who made the change (Basic Auth username).
+    actor: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -60,6 +62,9 @@ class Snapshot(SQLModel, table=True):
 _ADDITIVE_COLUMNS = {
     "target": {
         "host_key_fingerprint": "VARCHAR",
+    },
+    "togglehistory": {
+        "actor": "VARCHAR",
     },
 }
 

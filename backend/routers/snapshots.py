@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from backend.database import get_session, Target, Snapshot, ToggleHistory
 from backend.executor import build_executor as _make_executor
 from backend.helper import run_toggle_cmd
+from backend.auth import require_auth
 from backend.toggles_registry import TOGGLES, TOGGLES_BY_ID
 
 router = APIRouter(prefix="/api/snapshots", tags=["snapshots"])
@@ -66,7 +67,11 @@ async def create_snapshot(body: SnapshotCreate, session: Session = Depends(get_s
 
 
 @router.post("/{snapshot_id}/restore")
-async def restore_snapshot(snapshot_id: int, session: Session = Depends(get_session)):
+async def restore_snapshot(
+    snapshot_id: int,
+    session: Session = Depends(get_session),
+    actor: str = Depends(require_auth),
+):
     """Restore toggle states from a snapshot sequentially."""
     snapshot = session.get(Snapshot, snapshot_id)
     if not snapshot:
@@ -97,6 +102,7 @@ async def restore_snapshot(snapshot_id: int, session: Session = Depends(get_sess
             profile=f"snapshot:{snapshot.name}",
             success=success,
             stderr=stderr if not success else None,
+            actor=actor,
             timestamp=datetime.utcnow(),
         )
         session.add(history)

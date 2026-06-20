@@ -11,6 +11,7 @@ from backend.database import get_session, Target
 from backend.executor import build_executor as _make_executor, async_run
 from backend import ssh_identity
 from backend.helper import HELPER_PATH, SUDOERS_PATH, generate_helper_script
+from backend.ratelimit import limit_probes
 
 router = APIRouter(prefix="/api", tags=["setup"])
 
@@ -103,7 +104,7 @@ async def enroll_script():
     )
 
 
-@router.post("/test-connection")
+@router.post("/test-connection", dependencies=[Depends(limit_probes)])
 async def test_connection(body: TestConnectionBody, session: Session = Depends(get_session)):
     """Test SSH reachability and key auth for a target Mac."""
     target = session.get(Target, body.target_id)
@@ -150,7 +151,7 @@ async def test_connection(body: TestConnectionBody, session: Session = Depends(g
     }
 
 
-@router.post("/test-sudo")
+@router.post("/test-sudo", dependencies=[Depends(limit_probes)])
 async def test_sudo(body: TestSudoBody, session: Session = Depends(get_session)):
     """Verify passwordless sudo for the smoggle-helper wrapper is configured.
 
