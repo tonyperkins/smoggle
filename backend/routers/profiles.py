@@ -15,6 +15,7 @@ from backend.database import get_session, Target, ToggleHistory
 from backend.executor import SSHExecutor, async_run
 from backend.toggles_registry import TOGGLES_BY_ID
 from backend.profiles_registry import PROFILES, PROFILE_META
+from backend import ssh_identity
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 
@@ -28,7 +29,7 @@ def _make_executor(target: Target) -> SSHExecutor:
     return SSHExecutor(
         host=target.host,
         username=target.username,
-        key_path=target.key_path,
+        key_path=ssh_identity.KEY_PATH,
         port=target.port,
     )
 

@@ -16,6 +16,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from backend.database import engine, Target
 from backend.executor import SSHExecutor, async_run
+from backend import ssh_identity
 
 router = APIRouter(prefix="/api/status", tags=["status"])
 
@@ -218,7 +219,7 @@ async def _resource_event_generator(target_id: int) -> AsyncGenerator:
             executor = SSHExecutor(
                 host=target.host,
                 username=target.username,
-                key_path=target.key_path,
+                key_path=ssh_identity.KEY_PATH,
                 port=target.port,
             )
 

@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   smoggle:
     build: .
@@ -6,8 +5,9 @@ services:
     ports:
       - "7420:7420"
     volumes:
+      # Smoggle generates and stores its own managed SSH identity key here on
+      # first boot (backend/ssh_identity.py), so no host key mount is needed.
       - smoggle_data:/app/data
-      - ${HOME}/.ssh:/root/.ssh:ro
     environment:
       - DEPLOY_MODE=remote
     restart: unless-stopped
