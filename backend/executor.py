@@ -8,7 +8,10 @@ to avoid blocking the FastAPI / uvicorn event loop.
 from abc import ABC, abstractmethod
 from typing import Optional
 import asyncio
+import base64
 import functools
+import hashlib
+import hmac
 import threading
 import os
 import paramiko
@@ -31,6 +34,36 @@ class BaseExecutor(ABC):
         pass
 
 
+def _fingerprint(key: paramiko.PKey) -> str:
+    """OpenSSH-style SHA256 fingerprint of a host key (e.g. 'SHA256:abc…')."""
+    digest = hashlib.sha256(key.asbytes()).digest()
+    return "SHA256:" + base64.b64encode(digest).decode("ascii").rstrip("=")
+
+
+class _HostKeyPinPolicy(paramiko.MissingHostKeyPolicy):
+    """Trust-on-first-use host-key pinning.
+
+    Known-hosts is never loaded, so this fires on every new connection. With no
+    expected fingerprint we record what we see and accept (TOFU); with one we
+    require an exact match and reject otherwise (defends against LAN MITM).
+    """
+
+    def __init__(self, executor: "SSHExecutor"):
+        self._executor = executor
+
+    def missing_host_key(self, client, hostname, key):
+        fp = _fingerprint(key)
+        expected = self._executor.host_key_fingerprint
+        if expected is None:
+            self._executor.captured_fingerprint = fp
+            return  # first contact — trust and remember
+        if hmac.compare_digest(fp, expected):
+            return  # matches the pinned key
+        raise paramiko.SSHException(
+            f"host key changed for {hostname}: expected {expected}, got {fp}"
+        )
+
+
 class SSHExecutor(BaseExecutor):
     """Paramiko-backed SSH executor with connection pooling per target.
 
@@ -51,12 +84,18 @@ class SSHExecutor(BaseExecutor):
         key_path: str,
         port: int = 22,
         timeout: int = 10,
+        host_key_fingerprint: Optional[str] = None,
     ):
         self.host = host
         self.username = username
         self.key_path = os.path.expanduser(key_path)
         self.port = port
         self.timeout = timeout
+        # Pinned fingerprint (None => trust-on-first-use). After a first-contact
+        # connect, captured_fingerprint holds what we saw so the caller can
+        # persist it onto the Target.
+        self.host_key_fingerprint = host_key_fingerprint
+        self.captured_fingerprint: Optional[str] = None
         self._pool_key = f"{username}@{host}:{port}"
         # Ensure a command-serialisation lock exists for this target
         with SSHExecutor._pool_lock:
@@ -68,7 +107,7 @@ class SSHExecutor(BaseExecutor):
             client = SSHExecutor._pool.get(self._pool_key)
             if client is None or not client.get_transport() or not client.get_transport().is_active():
                 client = paramiko.SSHClient()
-                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                client.set_missing_host_key_policy(_HostKeyPinPolicy(self))
                 client.connect(
                     hostname=self.host,
                     port=self.port,
@@ -124,6 +163,21 @@ class LocalExecutor(BaseExecutor):
 
     def close(self):
         raise NotImplementedError("Local mode not implemented in v1")
+
+
+def build_executor(target) -> SSHExecutor:
+    """Construct an SSHExecutor for a Target using the app-managed identity key
+    and the target's pinned host-key fingerprint. Single source of truth for
+    executor creation across all routers."""
+    from backend import ssh_identity  # local import avoids any import cycle
+
+    return SSHExecutor(
+        host=target.host,
+        username=target.username,
+        key_path=ssh_identity.KEY_PATH,
+        port=target.port,
+        host_key_fingerprint=target.host_key_fingerprint,
+    )
 
 
 async def async_run(executor: BaseExecutor, command: str) -> tuple[str, str, int]:
