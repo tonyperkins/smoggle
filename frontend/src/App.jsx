@@ -9,6 +9,7 @@
  *   setTargets      — setter (used by Settings after add/remove)
  *   activeTargetId  — currently selected target ID (int | null)
  *   setActiveTargetId
+ *   isMacosSupported(version) — true if a macOS version is in the tested matrix
  */
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
@@ -32,6 +33,8 @@ export default function App() {
   const [targets, setTargets]             = useState([])
   const [activeTargetId, setActiveTargetId] = useState(null)
   const [loaded, setLoaded]               = useState(false)
+  // Declared macOS support matrix (from the backend); empty => assume supported.
+  const [supportedMacos, setSupportedMacos] = useState(null)
 
   // Load target list once on mount
   useEffect(() => {
@@ -46,6 +49,22 @@ export default function App() {
       .finally(() => setLoaded(true))
   }, [])
 
+  // Load the macOS support matrix once
+  useEffect(() => {
+    fetch('/api/compat')
+      .then(r => r.json())
+      .then(setSupportedMacos)
+      .catch(() => {})
+  }, [])
+
+  // True if a macOS version string is in the tested matrix. Unknown/missing
+  // matrix => don't warn (assume supported) rather than nag spuriously.
+  function isMacosSupported(version) {
+    const majors = supportedMacos?.supported_macos_majors
+    if (!majors || !version) return true
+    return majors.includes(String(version).split('.')[0])
+  }
+
   // Sync activeTargetId if targets list changes (e.g. after add/remove in Settings)
   useEffect(() => {
     if (targets.length > 0 && !targets.find(t => t.id === activeTargetId)) {
@@ -59,7 +78,7 @@ export default function App() {
   if (!loaded) return <Spinner />
 
   return (
-    <TargetContext.Provider value={{ targets, setTargets, activeTargetId, setActiveTargetId }}>
+    <TargetContext.Provider value={{ targets, setTargets, activeTargetId, setActiveTargetId, supportedMacos, isMacosSupported }}>
       <BrowserRouter>
         <Routes>
           {/* First-run: redirect to /setup if no targets configured */}

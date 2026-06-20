@@ -9,7 +9,7 @@ from datetime import datetime
 
 from backend.database import get_session, Target
 from backend.executor import build_executor as _make_executor, async_run
-from backend import ssh_identity
+from backend import ssh_identity, compat
 from backend.helper import HELPER_PATH, SUDOERS_PATH, generate_helper_script
 from backend.ratelimit import limit_probes
 
@@ -109,6 +109,15 @@ async def enroll_script():
         .replace("@@HELPER_PATH@@", HELPER_PATH)
         .replace("@@SUDOERS_PATH@@", SUDOERS_PATH)
     )
+
+
+@router.get("/compat")
+async def get_compat():
+    """Declared macOS support matrix, for the UI to flag untested targets."""
+    return {
+        "supported_macos_majors": list(compat.SUPPORTED_MACOS_MAJORS),
+        "tested_macos_label": compat.TESTED_MACOS_LABEL,
+    }
 
 
 @router.post("/test-connection", dependencies=[Depends(limit_probes)])

@@ -118,14 +118,19 @@ export default function ToggleCard({ toggle, onApply }) {
       <div className="flex items-center gap-1.5 flex-wrap">
 
         {/* ON / OFF state chip */}
-        <span className={[
-          'text-xs font-bold px-2 py-0.5 rounded border',
-          isUnsupported ? 'bg-slate-700 border-slate-700 text-slate-600 italic' :
-          isUnknown     ? 'bg-slate-700 border-slate-600 text-slate-500 italic'
-            : isOn      ? 'bg-green-950 border-green-700 text-green-300'
-                        : 'bg-slate-700 border-slate-600 text-slate-400',
-        ].join(' ')}>
-          {isUnsupported ? 'N/A' : isUnknown ? '—' : isOn ? 'ON' : 'OFF'}
+        <span
+          title={isUnknown && !isUnsupported
+            ? "Couldn't read this toggle's state — it may behave differently on this macOS version"
+            : undefined}
+          className={[
+            'text-xs font-bold px-2 py-0.5 rounded border',
+            isUnsupported ? 'bg-slate-700 border-slate-700 text-slate-600 italic' :
+            isUnknown     ? 'bg-slate-700 border-slate-600 text-slate-500 italic'
+              : isOn      ? 'bg-green-950 border-green-700 text-green-300'
+                          : 'bg-slate-700 border-slate-600 text-slate-400',
+          ].join(' ')}
+        >
+          {isUnsupported ? 'N/A' : isUnknown ? '? unknown' : isOn ? 'ON' : 'OFF'}
         </span>
 
         {/* Impact badge */}
