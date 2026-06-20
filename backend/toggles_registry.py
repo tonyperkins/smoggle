@@ -108,7 +108,7 @@ TOGGLES = [
     "apple_silicon_only": True,
     "cmd_off": "sudo softwareupdate --schedule off",
     "cmd_on": "sudo softwareupdate --schedule on",
-    "cmd_status": "out=$(sudo softwareupdate --schedule 2>/dev/null); echo $out | grep -q 'Automatic check is on' && echo 1 || echo 0",
+    "cmd_status": "val=$(defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled 2>/dev/null); [ \"$val\" = '1' ] && echo 1 || echo 0",
   },
 
   {
