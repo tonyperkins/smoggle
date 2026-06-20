@@ -125,7 +125,7 @@ TOGGLES = [
     "apple_silicon_only": True,
     "cmd_off": "sudo pmset -a powernap 0",
     "cmd_on": "sudo pmset -a powernap 1",
-    "cmd_status": "pmset -g 2>/dev/null | grep -q 'powernap.*1' && echo 1 || echo 0",
+    "cmd_status": "val=$(pmset -g 2>/dev/null | awk '$1==\"powernap\"{print $2; exit}'); [ \"$val\" = '1' ] && echo 1 || echo 0",
   },
 
   {
@@ -264,7 +264,7 @@ TOGGLES = [
     "cmd_supported": "pmset -g 2>/dev/null | grep -q highpowermode && echo 1 || echo 0",
     "cmd_off": "sudo pmset -a highpowermode 0",
     "cmd_on": "sudo pmset -a highpowermode 1",
-    "cmd_status": "pmset -g 2>/dev/null | grep -q 'highpowermode.*1' && echo 1 || echo 0",
+    "cmd_status": "val=$(pmset -g 2>/dev/null | awk '$1==\"highpowermode\"{print $2; exit}'); [ \"$val\" = '1' ] && echo 1 || echo 0",
   },
 
   # ── DANGER ────────────────────────────────────────────────────────────
