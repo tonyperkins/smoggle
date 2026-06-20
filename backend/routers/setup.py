@@ -10,6 +10,7 @@ from datetime import datetime
 from backend.database import get_session, Target
 from backend.executor import build_executor as _make_executor, async_run
 from backend import ssh_identity
+from backend.helper import HELPER_PATH, SUDOERS_PATH, generate_helper_script
 
 router = APIRouter(prefix="/api", tags=["setup"])
 
@@ -28,31 +29,78 @@ async def identity_public_key():
     return ssh_identity.get_public_key()
 
 
-@router.get("/enroll.sh", response_class=PlainTextResponse)
-async def enroll_script():
-    """A shell script the user runs on a target Mac to authorise Smoggle.
-
-    Appends the app's managed public key to ~/.ssh/authorized_keys (idempotent),
-    creating the .ssh dir with correct permissions if needed. No secret leaves
-    the backend — only the public key is embedded.
-    """
-    pubkey = ssh_identity.get_public_key()
-    # Single-quote the key for the shell; it contains no single quotes.
-    script = f"""#!/bin/sh
+# Single onboarding script. Run plain (`| sh`) it authorises Smoggle's SSH key
+# for the current user. Run with sudo (`| sudo sh`) it ALSO installs the
+# root-owned smoggle-helper and a narrow sudoers grant, enabling privileged
+# toggles. $SUDO_USER lets the sudo path target the real user, not root.
+# Tokens (@@…@@) are substituted server-side; shell ${…} stays literal.
+_ENROLL_TEMPLATE = """#!/bin/sh
 set -e
-KEY='{pubkey}'
-mkdir -p "$HOME/.ssh"
-chmod 700 "$HOME/.ssh"
-touch "$HOME/.ssh/authorized_keys"
-chmod 600 "$HOME/.ssh/authorized_keys"
-if grep -qF "$KEY" "$HOME/.ssh/authorized_keys"; then
-  echo "Smoggle key already authorised."
+
+USER_NAME="${SUDO_USER:-$(id -un)}"
+USER_HOME=$(eval echo "~$USER_NAME")
+KEY='@@KEY@@'
+
+# 1) Always: authorise Smoggle's SSH key for that user (idempotent).
+mkdir -p "$USER_HOME/.ssh"
+chmod 700 "$USER_HOME/.ssh"
+touch "$USER_HOME/.ssh/authorized_keys"
+chmod 600 "$USER_HOME/.ssh/authorized_keys"
+if [ "$(id -u)" -eq 0 ]; then
+  # sshd's StrictModes rejects an authorized_keys not owned by the user.
+  chown "$USER_NAME" "$USER_HOME/.ssh" "$USER_HOME/.ssh/authorized_keys"
+fi
+if grep -qF "$KEY" "$USER_HOME/.ssh/authorized_keys"; then
+  echo "Smoggle key already authorised for $USER_NAME."
 else
-  echo "$KEY" >> "$HOME/.ssh/authorized_keys"
-  echo "Smoggle key authorised. You can now Test SSH from the dashboard."
+  echo "$KEY" >> "$USER_HOME/.ssh/authorized_keys"
+  echo "Smoggle key authorised for $USER_NAME."
+fi
+
+# 2) If root: install the privileged helper + a narrow sudoers grant.
+if [ "$(id -u)" -eq 0 ]; then
+  cat > '@@HELPER_PATH@@' <<'SMOGGLE_HELPER_EOF'
+@@HELPER_SCRIPT@@
+SMOGGLE_HELPER_EOF
+  chmod 0755 '@@HELPER_PATH@@'
+  chown root:wheel '@@HELPER_PATH@@'
+
+  printf '%s ALL=(root) NOPASSWD: %s\\n' "$USER_NAME" '@@HELPER_PATH@@' > '@@SUDOERS_PATH@@.tmp'
+  chmod 0440 '@@SUDOERS_PATH@@.tmp'
+  if visudo -cf '@@SUDOERS_PATH@@.tmp' >/dev/null 2>&1; then
+    mv '@@SUDOERS_PATH@@.tmp' '@@SUDOERS_PATH@@'
+    echo "smoggle-helper installed; passwordless sudo granted for $USER_NAME."
+    echo "Enrollment complete — run Test SSH and Test Sudo from the dashboard."
+  else
+    rm -f '@@SUDOERS_PATH@@.tmp'
+    echo "ERROR: generated sudoers failed validation; not installed." >&2
+    exit 1
+  fi
+else
+  echo ""
+  echo "SSH key installed. To enable privileged toggles (Spotlight, Time"
+  echo "Machine, software updates, etc.), re-run this with sudo:"
+  echo "  curl -fsSL <smoggle-url>/api/enroll.sh | sudo sh"
 fi
 """
-    return script
+
+
+@router.get("/enroll.sh", response_class=PlainTextResponse)
+async def enroll_script():
+    """Single onboarding script for a target Mac.
+
+    Run as the user it authorises Smoggle's managed SSH public key. Run with
+    sudo it additionally installs the root-owned smoggle-helper allowlist and a
+    sudoers grant for it. No secret leaves the backend — only the public key and
+    the (non-sensitive) helper allowlist are embedded.
+    """
+    return (
+        _ENROLL_TEMPLATE
+        .replace("@@KEY@@", ssh_identity.get_public_key())
+        .replace("@@HELPER_SCRIPT@@", generate_helper_script().rstrip("\n"))
+        .replace("@@HELPER_PATH@@", HELPER_PATH)
+        .replace("@@SUDOERS_PATH@@", SUDOERS_PATH)
+    )
 
 
 @router.post("/test-connection")
@@ -104,41 +152,53 @@ async def test_connection(body: TestConnectionBody, session: Session = Depends(g
 
 @router.post("/test-sudo")
 async def test_sudo(body: TestSudoBody, session: Session = Depends(get_session)):
-    """Test that passwordless sudo works for all required commands."""
+    """Verify passwordless sudo for the smoggle-helper wrapper is configured.
+
+    Privileged operations all go through one root-owned allowlist script
+    (see helper.py), so we only need to confirm `sudo -n smoggle-helper` runs
+    without a password. We invoke a deliberately-unknown action: if the helper
+    executes (as root, no prompt) it prints 'not permitted' and exits 1 — that
+    output is proof the sudoers grant and the script are both in place.
+    """
     target = session.get(Target, body.target_id)
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
 
     executor = _make_executor(target)
 
-    # Test each required binary with sudo -n (non-interactive — fails if password needed)
-    required_cmds = [
-        ("mdutil",         "sudo -n mdutil -h 2>&1; echo $?"),
-        ("tmutil",         "sudo -n tmutil help 2>&1; echo $?"),
-        ("pmset",          "sudo -n pmset -g 2>&1 | head -1; echo $?"),
-        ("softwareupdate", "sudo -n softwareupdate --schedule 2>&1; echo $?"),
-        ("launchctl",      "sudo -n launchctl list 2>&1 | head -1; echo $?"),
-        ("defaults",       "sudo -n defaults write com.smoggle.test ping ok 2>&1 && sudo -n defaults delete com.smoggle.test 2>&1; echo $?"),
-    ]
+    probe = f"sudo -n {HELPER_PATH} __selftest__ status 2>&1; echo __exit__$?"
+    stdout, stderr, _ = await async_run(executor, probe)
+    combined = f"{stdout}\n{stderr}"
+    lower = combined.lower()
 
-    results = []
-    all_ok = True
+    # The helper's default arm prints exactly this — only reachable if sudo -n
+    # ran it as root without a password.
+    helper_ran = "smoggle-helper: not permitted" in combined
 
-    for label, cmd in required_cmds:
-        stdout, stderr, exit_code = await async_run(executor, cmd)
-        # sudo -n exits 1 if password required, last line is exit code from echo $?
-        lines = stdout.strip().splitlines()
-        inner_exit = int(lines[-1]) if lines and lines[-1].isdigit() else exit_code
-        # sudo "requires a password" stderr indicates failure
-        sudo_denied = "password" in stderr.lower() or "sudoers" in stderr.lower()
-        ok = not sudo_denied and inner_exit != 1
-        results.append({"command": label, "success": ok, "stderr": stderr[:120] if not ok else None})
-        if not ok:
-            all_ok = False
+    if helper_ran:
+        message = "Passwordless sudo for smoggle-helper is configured."
+    elif "password" in lower or "sudoers" in lower:
+        message = (
+            "sudo requires a password — re-run the enrollment command with "
+            "sudo to install /etc/sudoers.d/smoggle."
+        )
+    elif "command not found" in lower or "no such file" in lower:
+        message = (
+            "smoggle-helper is not installed — run the enrollment command "
+            "with sudo on the Mac."
+        )
+    else:
+        message = "Could not verify smoggle-helper sudo access."
+
+    results = [{
+        "command": "smoggle-helper",
+        "success": helper_ran,
+        "stderr": None if helper_ran else combined.strip()[:160],
+    }]
 
     return {
-        "success": all_ok,
-        "message": "All sudo commands available" if all_ok else "Some sudo commands denied — check /etc/sudoers.d/smoggle",
+        "success": helper_ran,
+        "message": message,
         "target_id": body.target_id,
         "results": results,
     }

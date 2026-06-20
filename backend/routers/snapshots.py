@@ -14,7 +14,8 @@ from sqlmodel import Session, select
 from pydantic import BaseModel
 
 from backend.database import get_session, Target, Snapshot, ToggleHistory
-from backend.executor import build_executor as _make_executor, async_run
+from backend.executor import build_executor as _make_executor
+from backend.helper import run_toggle_cmd
 from backend.toggles_registry import TOGGLES, TOGGLES_BY_ID
 
 router = APIRouter(prefix="/api/snapshots", tags=["snapshots"])
@@ -45,7 +46,7 @@ async def create_snapshot(body: SnapshotCreate, session: Session = Depends(get_s
 
     # Read all toggle states concurrently (read-only, safe to parallelize)
     async def fetch_state(toggle):
-        stdout, _, _ = await async_run(executor, toggle["cmd_status"])
+        stdout, _, _ = await run_toggle_cmd(executor, toggle, "status")
         val = stdout.strip()
         return toggle["id"], ("on" if val == "1" else "off" if val == "0" else "unknown")
 
@@ -85,8 +86,7 @@ async def restore_snapshot(snapshot_id: int, session: Session = Depends(get_sess
         if not toggle or desired_state == "unknown":
             continue
 
-        cmd = toggle["cmd_on"] if desired_state == "on" else toggle["cmd_off"]
-        _, stderr, exit_code = await async_run(executor, cmd)
+        _, stderr, exit_code = await run_toggle_cmd(executor, toggle, desired_state)
         success = exit_code == 0
 
         history = ToggleHistory(

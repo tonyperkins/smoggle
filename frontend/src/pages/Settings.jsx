@@ -13,9 +13,9 @@ const FIELD_DEFS = [
   { key: 'username', label: 'SSH Username',  type: 'text',   placeholder: 'your_username'           },
 ]
 
-// The enroll script installs Smoggle's managed public key on the target Mac.
-// Built from the browser origin so it points back at this server.
-const ENROLL_CMD = `curl -fsSL ${window.location.origin}/api/enroll.sh | sh`
+// The enroll script authorises Smoggle's SSH key and (with sudo) installs the
+// root-owned smoggle-helper. Built from the browser origin so it points back here.
+const ENROLL_CMD = `curl -fsSL ${window.location.origin}/api/enroll.sh | sudo sh`
 
 function AddMacForm({ onAdded, onCancel }) {
   const [form, setForm]   = useState({ name: '', host: '', port: 22, username: '' })
@@ -182,7 +182,8 @@ function EnrollBlock({ macName }) {
     <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 space-y-2">
       <p className="text-xs text-slate-400">
         Run this in Terminal on <span className="text-slate-300 font-medium">{macName}</span> to
-        authorise Smoggle, then click <span className="text-slate-300">Test SSH</span>:
+        authorise Smoggle and install the privileged helper, then click{' '}
+        <span className="text-slate-300">Test SSH</span> and <span className="text-slate-300">Test Sudo</span>:
       </p>
       <div className="flex items-center gap-2">
         <code className="flex-1 min-w-0 truncate font-mono text-xs text-slate-200 bg-slate-800
