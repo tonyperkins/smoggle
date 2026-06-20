@@ -10,6 +10,20 @@ services:
       - smoggle_data:/app/data
     environment:
       - DEPLOY_MODE=remote
+    # The entrypoint fixes data-volume ownership then drops to the unprivileged
+    # 'smoggle' user via gosu, so the app process runs non-root. Drop all caps
+    # except the few the root entrypoint needs to chown the volume (CHOWN/
+    # DAC_OVERRIDE/FOWNER) and drop privileges (SETUID/SETGID).
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7420/health"]

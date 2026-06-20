@@ -2,13 +2,15 @@
 main.py — FastAPI application entry point for Smoggle.
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 
 from backend.database import init_db
 from backend import ssh_identity
+from backend import auth
+from backend.auth import require_auth
 from backend.routers import targets, toggles, profiles, snapshots, status, setup, history
 
 
@@ -16,6 +18,7 @@ from backend.routers import targets, toggles, profiles, snapshots, status, setup
 async def lifespan(app: FastAPI):
     init_db()
     ssh_identity.ensure_identity()
+    auth.ensure_credentials()
     yield
 
 
@@ -26,21 +29,28 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# The SPA is served same-origin, so no cross-origin access is needed by default.
+# SMOGGLE_ORIGINS (comma-separated) opts specific origins in; credentials are
+# only allowed alongside an explicit allowlist (never with a wildcard).
+_origins = [o.strip() for o in os.getenv("SMOGGLE_ORIGINS", "").split(",") if o.strip()]
+if _origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-app.include_router(targets.router)
-app.include_router(toggles.router)
-app.include_router(profiles.router)
-app.include_router(snapshots.router)
-app.include_router(status.router)
-app.include_router(setup.router)
-app.include_router(history.router)
+# All API routers require Basic Auth. /health and the static SPA stay open.
+_auth = [Depends(require_auth)]
+app.include_router(targets.router, dependencies=_auth)
+app.include_router(toggles.router, dependencies=_auth)
+app.include_router(profiles.router, dependencies=_auth)
+app.include_router(snapshots.router, dependencies=_auth)
+app.include_router(status.router, dependencies=_auth)
+app.include_router(setup.router, dependencies=_auth)
+app.include_router(history.router, dependencies=_auth)
 
 
 @app.get("/health")
