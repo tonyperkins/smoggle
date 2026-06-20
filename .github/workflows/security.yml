@@ -1,0 +1,74 @@
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python deps + SAST
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install scanners
+        run: pip install pip-audit bandit
+      # Allowlisted CVEs (deliberate, tracked — see SECURITY.md "Known issues"):
+      #  - CVE-2026-44405 (paramiko): no fixed version published yet.
+      #  - starlette CVEs: fixed only by a FastAPI major upgrade (separate task).
+      #    On a trusted private network these are low real-world risk (DoS /
+      #    multipart / form parsing). Re-audit when FastAPI is bumped.
+      - name: pip-audit (backend dependencies)
+        run: |
+          pip-audit -r backend/requirements.txt \
+            --ignore-vuln CVE-2026-44405 \
+            --ignore-vuln PYSEC-2026-161 \
+            --ignore-vuln CVE-2024-47874 \
+            --ignore-vuln CVE-2025-54121 \
+            --ignore-vuln CVE-2026-48818 \
+            --ignore-vuln CVE-2026-48817 \
+            --ignore-vuln CVE-2026-54283 \
+            --ignore-vuln CVE-2026-54282
+      - name: bandit (Python SAST)
+        run: bandit -r backend -ll -ii
+
+  node:
+    name: npm audit (frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit
+      # Fail on high+ EXCEPT allowlisted advisories (each needs a breaking major
+      # upgrade — tracked separately; see SECURITY.md "Known issues"):
+      #  - GHSA-2j2x-hqr9-3h42 (react-router open redirect): fixed in v7. Low
+      #    impact for an internal admin SPA.
+      #  - GHSA-fx2h-pf6j-xcff (vite): fixed in v8. Build-time-only devDependency,
+      #    not present in the shipped static bundle — no production exposure.
+      - name: npm audit (high+, allowlisted)
+        run: npx --yes audit-ci@^7 --high --allowlist GHSA-2j2x-hqr9-3h42 GHSA-fx2h-pf6j-xcff
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

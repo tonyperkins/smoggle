@@ -68,6 +68,11 @@ function ToggleSwitch({ isOn, pending, onToggle, name }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
+// Toggles whose OFF state weakens the Mac's security posture. Flagged in the UI
+// so disabling them is a deliberate choice. (The registry's impact/danger fields
+// describe performance, not security, so this is tracked here.)
+const SECURITY_REDUCING = new Set(['auto_updates', 'location_services'])
+
 export default function ToggleCard({ toggle, onApply }) {
   const [pending, setPending] = useState(false)
   const [toast, setToast] = useState(null)
@@ -77,6 +82,7 @@ export default function ToggleCard({ toggle, onApply }) {
   const isUnsupported = liveState === 'unsupported'
   const isUnknown = !liveState || liveState === 'unknown' || liveState === 'error'
   const impact = impactMeta(toggle.impact ?? '')
+  const reducesSecurity = SECURITY_REDUCING.has(toggle.id)
 
   async function handleToggle() {
     if (pending || isUnknown || isUnsupported) return
@@ -143,6 +149,18 @@ export default function ToggleCard({ toggle, onApply }) {
           </span>
         )}
 
+        {/* Security-reducing badge */}
+        {reducesSecurity && (
+          <span
+            title="Turning this off reduces this Mac's security"
+            className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded border
+                       bg-orange-950 border-orange-700 text-orange-300"
+          >
+            <ShieldAlert size={10} className="flex-shrink-0" />
+            SECURITY
+          </span>
+        )}
+
         {/* Apple default chip */}
         <span className="text-xs text-slate-500 border border-slate-700 px-2 py-0.5 rounded">
           Default: {(toggle.default_state ?? 'on').toUpperCase()}
@@ -153,6 +171,14 @@ export default function ToggleCard({ toggle, onApply }) {
           <RestartBadge note={toggle.restart_note} />
         )}
       </div>
+
+      {/* ── Security caution when currently disabled ── */}
+      {reducesSecurity && !isOn && !isUnsupported && !isUnknown && (
+        <p className="text-xs text-orange-300/90 bg-orange-950/40 border border-orange-900 rounded px-2 py-1 flex items-start gap-1.5">
+          <ShieldAlert size={12} className="flex-shrink-0 mt-0.5" />
+          This is off — it reduces this Mac's security. Re-enable unless you intend to keep it disabled.
+        </p>
+      )}
 
       {/* ── Error toast ── */}
       {toast && (
