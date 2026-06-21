@@ -1,0 +1,118 @@
+======================================================================
+ Smoggle macOS compatibility report
+ Generated: Sun Jun 21 12:15:37 CDT 2026
+======================================================================
+
+##### SYSTEM #####
+
+$ sw_vers
+ProductName:            macOS
+ProductVersion:         14.6
+BuildVersion:           23G80
+
+$ sysctl -n machdep.cpu.brand_string
+Apple M2
+
+$ system_profiler SPHardwareDataType 2>/dev/null | grep -E 'Model Name|Model Identifier|Chip|Memory'
+      Model Name: MacBook Air
+      Model Identifier: Mac14,2
+      Chip: Apple M2
+      Memory: 16 GB
+
+$ command -v mdutil tmutil pmset softwareupdate caffeinate 2>/dev/null
+/usr/bin/mdutil
+/usr/bin/tmutil
+/usr/bin/pmset
+/usr/sbin/softwareupdate
+/usr/bin/caffeinate
+
+##### USER-DOMAIN SETTINGS (no admin needed) #####
+
+$ defaults read com.apple.photos PKPhotoAnalysisEnabled
+1
+
+$ defaults read com.apple.bird.plist syncedDesktop
+1
+
+$ defaults read com.apple.assistant.support 'Assistant Enabled'
+1
+
+$ defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled
+1
+
+$ defaults read com.apple.coreduet.support ActivityContinuationEnabled
+1
+
+$ defaults read com.apple.mail InboxViewerAttributes
+{
+    FetchInterval = 5;
+}
+
+$ defaults read com.apple.SubmitDiagInfo AutoSubmit
+1
+
+$ defaults read com.apple.airplay AirPlayReceiverEnabled
+1
+
+$ defaults read NSGlobalDomain NSAppSleepDisabled
+0
+
+$ defaults read com.apple.notificationcenterui doNotDisturb
+0
+
+$ pmset -g
+System-wide power settings:
+Currently in use:
+ standby              1
+ Sleep On Power Button 1
+ SleepServices        1
+ hibernatefile        /var/vm/sleepimage
+ powernap             1
+ networkoversleep     0
+ disksleep            10
+ sleep                0 (sleep prevented by powerd, sharingd, coreaudiod)
+ hibernatemode        3
+ ttyskeepawake        1
+ displaysleep         10
+ tcpkeepalive         1
+ lowpowermode         0
+ womp                 1
+
+$ pmset -g | grep -i nap
+ powernap             1
+
+$ pmset -g | grep -i powermode
+ lowpowermode         0
+
+$ pgrep -x ollama >/dev/null 2>&1 && echo "ollama: running" || echo "ollama: not running"
+ollama: running
+
+##### REFERENCE: human-readable wording (drift check) #####
+
+$ softwareupdate --schedule
+Automatic checking for updates is turned on
+
+##### SYSTEM SETTINGS (administrator password required) #####
+
+The following are read-only but need admin rights.
+
+$ sudo mdutil -a -s
+/:
+        Indexing enabled.
+/System/Volumes/Data:
+        Error: unknown indexing state.
+/System/Volumes/Data:
+        Error: unknown indexing state.
+/System/Volumes/Preboot:
+        Indexing enabled.
+
+$ sudo defaults read /Library/Preferences/com.apple.TimeMachine AutoBackup
+1
+
+$ sudo defaults read /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled
+1
+
+$ sudo defaults read /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements
+The domain/default pair of (/Library/Preferences/com.apple.mDNSResponder.plist, NoMulticastAdvertisements) does not exist
+
+##### END OF REPORT #####
