@@ -8,9 +8,9 @@ import { useTarget } from '../App.jsx'
 
 function StatusDot({ status }) {
   const colors = {
-    connected:    'bg-green-500',
-    disconnected: 'bg-red-500',
-    checking:     'bg-amber-400 animate-pulse',
+    connected:    'bg-accent',
+    disconnected: 'bg-danger',
+    checking:     'bg-warn animate-pulse',
   }
   return (
     <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${colors[status] ?? colors.checking}`} />
@@ -53,7 +53,7 @@ export default function MacSelector() {
 
   if (targets.length === 0) {
     return (
-      <span className="text-xs text-slate-500 px-2">No Macs configured</span>
+      <span className="text-xs text-ink-faint px-2">No Macs configured</span>
     )
   }
 
@@ -61,26 +61,26 @@ export default function MacSelector() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded px-2.5 py-1 text-sm text-slate-100 focus:outline-none"
+        className="flex items-center gap-2 bg-surface hover:bg-surface-2 border border-line rounded-full px-3 py-1 text-sm text-ink focus:outline-none transition-colors"
       >
         {active && <StatusDot status={statuses[active.id] ?? 'checking'} />}
-        <span className="max-w-[160px] truncate">{active?.name ?? 'Select Mac'}</span>
-        <ChevronDown size={14} className="text-slate-400 flex-shrink-0" />
+        <span className="max-w-[160px] truncate font-medium">{active?.name ?? 'Select Mac'}</span>
+        <ChevronDown size={14} className="text-ink-faint flex-shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-[200px] bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[220px] bg-surface border border-line rounded-xl shadow-xl overflow-hidden">
           {targets.map(t => (
             <button
               key={t.id}
               onClick={() => { setActiveTargetId(t.id); setOpen(false) }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-slate-700 transition-colors ${
-                t.id === activeTargetId ? 'bg-slate-700 text-slate-100' : 'text-slate-300'
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-surface-2 transition-colors ${
+                t.id === activeTargetId ? 'bg-surface-2 text-ink' : 'text-ink-muted'
               }`}
             >
               <StatusDot status={statuses[t.id] ?? 'checking'} />
               <span className="flex-1 truncate">{t.name}</span>
-              <span className="text-xs text-slate-500 truncate max-w-[80px]">{t.host}</span>
+              <span className="text-xs text-ink-faint truncate max-w-[90px] font-mono">{t.host}</span>
             </button>
           ))}
         </div>

@@ -1,72 +1,57 @@
 /**
- * ProfileSidebar.jsx — Profile buttons, color-coded per spec.
- * Default=slate · Performance=blue · Max=purple · Hyper=red
+ * ProfileSidebar.jsx — one-click performance presets. The card matching the
+ * current live toggle states is marked ACTIVE (best-effort, display-only).
  */
-import React, { useState } from 'react'
-import ProfileModal from './ProfileModal.jsx'
+import React from 'react'
+import { RotateCcw, Zap, ChevronsUp, AlertTriangle } from 'lucide-react'
+import { detectActiveProfile } from '../lib/profiles.js'
 
 const PROFILES = [
-  {
-    name: 'default',
-    label: '🔄 Default',
-    desc: 'Restore Apple defaults',
-    cls: 'bg-slate-700 hover:bg-slate-600 text-slate-200 border-slate-600',
-  },
-  {
-    name: 'performance',
-    label: '⚡ Performance',
-    desc: 'Safe background service cuts',
-    cls: 'bg-blue-900/60 hover:bg-blue-800/80 text-blue-200 border-blue-800',
-  },
-  {
-    name: 'max',
-    label: '🚀 Max',
-    desc: 'Performance + power mode',
-    cls: 'bg-purple-900/60 hover:bg-purple-800/80 text-purple-200 border-purple-800',
-  },
-  {
-    name: 'hyper',
-    label: '☢️ Hyper',
-    desc: 'Max + mDNS off — breaks AirDrop',
-    cls: 'bg-red-950/60 hover:bg-red-900/80 text-red-300 border-red-900',
-  },
+  { name: 'default',     icon: RotateCcw,     label: 'Default',     desc: 'Restore Apple defaults' },
+  { name: 'performance', icon: Zap,           label: 'Performance', desc: 'Trim 10 safe background services' },
+  { name: 'max',         icon: ChevronsUp,    label: 'Max',         desc: 'Performance + High Power Mode' },
+  { name: 'hyper',       icon: AlertTriangle, label: 'Hyper',       desc: 'Max + mDNS off · breaks AirDrop' },
 ]
 
-export default function ProfileSidebar({ targetId, onApplied }) {
-  const [selected, setSelected] = useState(null)
+export default function ProfileSidebar({ targetId, toggles = [], onPick }) {
+  const liveById = Object.fromEntries(toggles.map(t => [t.id, t.live_state]))
+  const active = toggles.length ? detectActiveProfile(liveById) : null
 
   return (
-    <>
       <div className="flex flex-col gap-1.5">
-        <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold px-1 mb-0.5">
+        <p className="text-xs text-ink-faint uppercase tracking-wider font-semibold px-1 mb-0.5">
           Profiles
         </p>
-        {PROFILES.map(p => (
-          <button
-            key={p.name}
-            onClick={() => setSelected(p.name)}
-            disabled={!targetId}
-            className={[
-              'w-full text-left px-3 py-2 rounded border text-sm font-medium',
-              'transition-colors duration-150',
-              'disabled:opacity-40 disabled:cursor-not-allowed',
-              p.cls,
-            ].join(' ')}
-          >
-            <span className="block leading-tight">{p.label}</span>
-            <span className="block text-xs opacity-60 font-normal mt-0.5">{p.desc}</span>
-          </button>
-        ))}
+        {PROFILES.map(p => {
+          const isActive = active === p.name
+          const Icon = p.icon
+          return (
+            <button
+              key={p.name}
+              onClick={() => onPick?.(p.name)}
+              disabled={!targetId}
+              className={[
+                'w-full text-left rounded-xl border px-3 py-2.5 transition-colors',
+                'flex items-center gap-2.5',
+                'disabled:opacity-40 disabled:cursor-not-allowed',
+                isActive
+                  ? 'border-accent/50 bg-accent-soft'
+                  : 'border-line bg-surface hover:bg-surface-2',
+              ].join(' ')}
+            >
+              <Icon size={16} className={isActive ? 'text-accent-ink flex-shrink-0' : 'text-ink-muted flex-shrink-0'} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-ink leading-tight">{p.label}</span>
+                <span className="block text-xs text-ink-muted mt-0.5 leading-tight">{p.desc}</span>
+              </span>
+              {isActive && (
+                <span className="text-[10px] font-bold uppercase tracking-wider text-accent-ink flex-shrink-0">
+                  Active
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
-
-      {selected && targetId && (
-        <ProfileModal
-          profileName={selected}
-          targetId={targetId}
-          onClose={() => setSelected(null)}
-          onApplied={() => { onApplied?.() }}
-        />
-      )}
-    </>
   )
 }

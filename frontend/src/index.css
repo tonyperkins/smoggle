@@ -2,15 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Smoggle theme tokens — "warm graphite instrument cockpit".
+ * Values are RGB channel triplets (see tailwind.config.js). Light is the
+ * default; .dark on <html> swaps in the cockpit values. A single spring-green
+ * signal accent carries through both themes.
+ */
 :root {
+  --bg:           233 229 221;   /* #E9E5DD warm light graphite */
+  --surface:      251 250 247;   /* #FBFAF7 */
+  --surface-2:    241 237 230;   /* #F1EDE6 */
+  --surface-3:    232 227 218;   /* #E8E3DA */
+  --line:         220 215 205;   /* #DCD7CD */
+  --ink:           32  29  25;   /* #201D19 */
+  --ink-muted:    110 106  96;   /* #6E6A60 */
+  --ink-faint:    154 149 139;   /* #9A958B */
+  --accent:        34 167  94;   /* #22A75E spring green (fills) */
+  --accent-ink:    21 122  60;   /* #157A3C readable green (text on light) */
+  --accent-soft:  223 240 230;   /* #DFF0E6 */
+  --warn:         176 110  28;   /* #B06E1C */
+  --warn-soft:    245 233 214;
+  --danger:       183  58  42;   /* #B73A2A */
+  --danger-soft:  246 224 219;
+  color-scheme: light;
+}
+
+.dark {
+  --bg:            26  24  20;   /* #1A1814 warm near-black graphite */
+  --surface:       34  31  26;   /* #221F1A */
+  --surface-2:     42  38  32;   /* #2A2620 */
+  --surface-3:     50  45  38;   /* #322D26 */
+  --line:          52  48  41;   /* #34302A */
+  --ink:          236 232 224;   /* #ECE8E0 */
+  --ink-muted:    147 140 128;   /* #938C80 */
+  --ink-faint:    110 104  93;   /* #6E685D */
+  --accent:        52 208 126;   /* #34D07E spring green (fills) */
+  --accent-ink:    79 217 140;   /* #4FD98C readable green (text on dark) */
+  --accent-soft:   28  46  36;   /* #1C2E24 */
+  --warn:         224 165  59;   /* #E0A53B */
+  --warn-soft:     46  38  24;
+  --danger:       224 101  75;   /* #E0654B */
+  --danger-soft:   48  28  24;
   color-scheme: dark;
 }
 
+* { box-sizing: border-box; }
+
 body {
-  @apply bg-slate-900 text-slate-100;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  @apply bg-bg text-ink antialiased;
+  font-family: "Hanken Grotesk Variable", system-ui, sans-serif;
 }
 
-* {
-  box-sizing: border-box;
+/* Keyboard focus visibility in the cockpit accent. */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

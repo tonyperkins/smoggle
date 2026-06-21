@@ -11,10 +11,10 @@ import { X, Zap, ShieldAlert, AlertTriangle, CheckCircle2, XCircle, Loader2, Arr
 import { PROFILES_FRONTEND } from '../lib/profiles.js'
 
 const PROFILE_META = {
-  default:     { label: 'Default',     emoji: '🔄', btnCls: 'bg-slate-600 hover:bg-slate-500',   headerCls: 'border-slate-700' },
-  performance: { label: 'Performance', emoji: '⚡', btnCls: 'bg-blue-700  hover:bg-blue-600',    headerCls: 'border-blue-900/60' },
-  max:         { label: 'Max',         emoji: '🚀', btnCls: 'bg-purple-700 hover:bg-purple-600', headerCls: 'border-purple-900/60' },
-  hyper:       { label: 'Hyper',       emoji: '☢️', btnCls: 'bg-red-700   hover:bg-red-600',     headerCls: 'border-red-900/60' },
+  default:     { label: 'Default',     emoji: '🔄', btnCls: 'bg-surface-3 hover:opacity-90 text-ink', headerCls: 'border-line' },
+  performance: { label: 'Performance', emoji: '⚡', btnCls: 'bg-accent hover:opacity-90 text-white',  headerCls: 'border-accent/40' },
+  max:         { label: 'Max',         emoji: '🚀', btnCls: 'bg-accent hover:opacity-90 text-white',  headerCls: 'border-accent/40' },
+  hyper:       { label: 'Hyper',       emoji: '☢️', btnCls: 'bg-danger hover:opacity-90 text-white',  headerCls: 'border-danger/40' },
 }
 
 export default function ProfileModal({ profileName, targetId, onClose, onApplied }) {
@@ -82,7 +82,7 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
       onClick={e => { if (e.target === e.currentTarget && !done) onClose() }}
     >
       <div className={[
-        'bg-slate-900 border rounded-xl w-full max-w-md mx-4 shadow-2xl flex flex-col',
+        'bg-bg border rounded-xl w-full max-w-md mx-4 shadow-2xl flex flex-col',
         'transition-all duration-200',
         meta.headerCls,
       ].join(' ')}>
@@ -92,17 +92,17 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
           <div className="flex items-center gap-2">
             <span className="text-lg leading-none">{meta.emoji}</span>
             <div>
-              <h2 className="text-slate-100 font-semibold text-sm leading-tight">
+              <h2 className="text-ink font-semibold text-sm leading-tight">
                 {meta.label} Profile
               </h2>
               {profileDef.description && !done && (
-                <p className="text-xs text-slate-500 mt-0.5">{profileDef.description}</p>
+                <p className="text-xs text-ink-faint mt-0.5">{profileDef.description}</p>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+            className="p-1 rounded text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors"
           >
             <X size={15} />
           </button>
@@ -116,19 +116,19 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
             <>
               {/* Hyper danger notice */}
               {isHyper && (
-                <div className="bg-red-950/50 border border-red-900 rounded-lg p-3 space-y-1">
-                  <p className="text-red-300 font-semibold text-xs flex items-center gap-1.5">
+                <div className="bg-danger-soft/50 border border-danger/40 rounded-lg p-3 space-y-1">
+                  <p className="text-danger font-semibold text-xs flex items-center gap-1.5">
                     <ShieldAlert size={13} className="flex-shrink-0" />
                     Destructive side effects
                   </p>
-                  <p className="text-xs text-red-400/80">Disables mDNS — breaks AirDrop, AirPlay receiving, some HomeKit.</p>
+                  <p className="text-xs text-danger/80">Disables mDNS — breaks AirDrop, AirPlay receiving, some HomeKit.</p>
                 </div>
               )}
 
               {/* Max warning */}
               {profileName === 'max' && (
-                <div className="bg-amber-950/40 border border-amber-900/60 rounded-lg p-3">
-                  <p className="text-amber-300/90 text-xs flex items-center gap-1.5">
+                <div className="bg-warn-soft border border-warn/40 rounded-lg p-3">
+                  <p className="text-warn/90 text-xs flex items-center gap-1.5">
                     <AlertTriangle size={12} className="flex-shrink-0" />
                     May affect AirPlay receiving and location features.
                   </p>
@@ -138,17 +138,17 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
               {/* Toggle list */}
               {profileDef.toggles.length > 0 && (
                 <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">
+                  <p className="text-xs text-ink-faint uppercase tracking-wider font-semibold mb-2">
                     {profileName === 'default' ? 'Restores defaults for' : 'Will change'} ({profileDef.toggles.length})
                   </p>
                   <div className="space-y-1">
                     {profileDef.toggles.map(t => (
-                      <div key={t.id} className="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0">
-                        <span className="text-slate-300">{t.name}</span>
-                        <span className="flex items-center gap-1 text-slate-500 flex-shrink-0">
-                          <span className={t.from === 'on' ? 'text-green-400' : 'text-slate-500'}>{t.from}</span>
+                      <div key={t.id} className="flex items-center justify-between text-xs py-1 border-b border-line last:border-0">
+                        <span className="text-ink-muted">{t.name}</span>
+                        <span className="flex items-center gap-1 text-ink-faint flex-shrink-0">
+                          <span className={t.from === 'on' ? 'text-accent-ink' : 'text-ink-faint'}>{t.from}</span>
                           <ArrowRight size={10} />
-                          <span className={t.to === 'on' ? 'text-green-400' : 'text-slate-400'}>{t.to}</span>
+                          <span className={t.to === 'on' ? 'text-accent-ink' : 'text-ink-muted'}>{t.to}</span>
                         </span>
                       </div>
                     ))}
@@ -159,8 +159,8 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
               {/* Hyper confirmation input */}
               {isHyper && (
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-xs text-slate-400">
-                    Type <code className="bg-slate-800 px-1.5 py-0.5 rounded text-red-300 font-mono">HYPER</code> to unlock Apply:
+                  <label className="text-xs text-ink-muted">
+                    Type <code className="bg-surface px-1.5 py-0.5 rounded text-danger font-mono">HYPER</code> to unlock Apply:
                   </label>
                   <input
                     ref={confirmRef}
@@ -171,13 +171,13 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
                     autoComplete="off"
                     spellCheck={false}
                     className={[
-                      'w-full bg-slate-800 border rounded-lg px-3 py-2 text-sm font-mono',
+                      'w-full bg-surface border rounded-lg px-3 py-2 text-sm font-mono',
                       'focus:outline-none transition-colors duration-150',
                       confirmInput === 'HYPER'
-                        ? 'border-red-600 text-red-300'
+                        ? 'border-danger text-danger'
                         : confirmInput.length > 0
-                          ? 'border-slate-600 text-slate-400'
-                          : 'border-slate-700 text-slate-100',
+                          ? 'border-line text-ink-muted'
+                          : 'border-line text-ink',
                     ].join(' ')}
                   />
                 </div>
@@ -187,8 +187,8 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
 
           {/* ── APPLYING: spinner ── */}
           {applying && (
-            <div className="flex items-center justify-center gap-3 py-6 text-slate-400">
-              <Loader2 size={18} className="animate-spin text-blue-400" />
+            <div className="flex items-center justify-center gap-3 py-6 text-ink-muted">
+              <Loader2 size={18} className="animate-spin text-accent-ink" />
               <span className="text-sm">Applying {meta.label} profile…</span>
             </div>
           )}
@@ -200,8 +200,8 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
               <div className={[
                 'flex items-center gap-2 px-3 py-2 rounded-lg mb-3 text-sm font-medium',
                 failCount === 0
-                  ? 'bg-green-950/50 border border-green-900 text-green-300'
-                  : 'bg-red-950/50 border border-red-900 text-red-300',
+                  ? 'bg-accent-soft/50 border border-accent/40 text-accent-ink'
+                  : 'bg-danger-soft/50 border border-danger/40 text-danger',
               ].join(' ')}>
                 {failCount === 0
                   ? <><CheckCircle2 size={14} /> All {activeResults.length} toggles applied successfully</>
@@ -213,27 +213,27 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
               {activeResults.map((r, i) => (
                 <div key={i} className={[
                   'flex items-center gap-2 text-xs px-2 py-1.5 rounded',
-                  !r.success ? 'bg-red-950/30' : '',
+                  !r.success ? 'bg-danger-soft/30' : '',
                 ].join(' ')}>
                   {r.success
-                    ? <CheckCircle2 size={12} className="text-green-500 flex-shrink-0" />
-                    : <XCircle      size={12} className="text-red-400 flex-shrink-0" />
+                    ? <CheckCircle2 size={12} className="text-accent flex-shrink-0" />
+                    : <XCircle      size={12} className="text-danger flex-shrink-0" />
                   }
-                  <span className={r.success ? 'text-slate-300 flex-1' : 'text-red-300 flex-1'}>
+                  <span className={r.success ? 'text-ink-muted flex-1' : 'text-danger flex-1'}>
                     {r.name ?? r.toggle_id}
                   </span>
                   {r.old_state && (
-                    <span className="text-slate-600 flex-shrink-0 flex items-center gap-1">
-                      <span className={r.old_state === 'on' ? 'text-green-500/60' : 'text-slate-600'}>{r.old_state}</span>
-                      <ArrowRight size={9} className="text-slate-700" />
-                      <span className={r.new_state === 'on' ? 'text-green-400' : 'text-slate-400'}>{r.new_state}</span>
+                    <span className="text-ink-faint flex-shrink-0 flex items-center gap-1">
+                      <span className={r.old_state === 'on' ? 'text-accent/60' : 'text-ink-faint'}>{r.old_state}</span>
+                      <ArrowRight size={9} className="text-ink-faint" />
+                      <span className={r.new_state === 'on' ? 'text-accent-ink' : 'text-ink-muted'}>{r.new_state}</span>
                     </span>
                   )}
                 </div>
               ))}
 
               {hasRestartRequired && (
-                <p className="text-xs text-yellow-400/80 flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-800">
+                <p className="text-xs text-warn flex items-center gap-1.5 mt-3 pt-3 border-t border-line">
                   <Zap size={11} /> Some changes need a logout/restart to fully take effect.
                 </p>
               )}
@@ -242,17 +242,17 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
 
           {/* ── Error ── */}
           {error && (
-            <div className="bg-red-950/50 border border-red-900 rounded-lg px-3 py-2">
-              <p className="text-xs text-red-400 font-mono break-all">{error}</p>
+            <div className="bg-danger-soft/50 border border-danger/40 rounded-lg px-3 py-2">
+              <p className="text-xs text-danger font-mono break-all">{error}</p>
             </div>
           )}
         </div>
 
         {/* ── Footer ── */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-line">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-sm text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition-colors"
+            className="px-3 py-1.5 text-sm text-ink-muted hover:text-ink rounded-lg hover:bg-surface transition-colors"
           >
             {done ? 'Close' : 'Cancel'}
           </button>

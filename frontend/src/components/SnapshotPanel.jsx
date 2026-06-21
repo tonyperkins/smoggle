@@ -60,67 +60,69 @@ export default function SnapshotPanel({ targetId }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold px-1">
+      <p className="text-xs text-ink-faint uppercase tracking-wider font-semibold px-1">
         Snapshots
       </p>
 
       {/* Save form */}
-      <div className="flex gap-1">
+      <div className="flex gap-1.5">
         <input
           type="text"
           value={newName}
           onChange={e => setNewName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && save()}
-          placeholder="Name…"
+          placeholder="Name this snapshot…"
           disabled={!targetId}
-          className="flex-1 min-w-0 bg-slate-700 border border-slate-600 rounded px-2 py-1
-                     text-xs text-slate-100 placeholder-slate-500
-                     focus:outline-none focus:border-blue-500
+          className="flex-1 min-w-0 bg-surface border border-line rounded-lg px-2.5 py-1.5
+                     text-xs text-ink placeholder-ink-faint
+                     focus:outline-none focus:border-accent
                      disabled:opacity-40"
         />
         <button
           onClick={save}
           disabled={saving || !newName.trim() || !targetId}
           title="Save snapshot"
-          className="flex-shrink-0 p-1.5 rounded bg-slate-700 hover:bg-slate-600
-                     text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-shrink-0 p-2 rounded-lg bg-surface border border-line hover:bg-surface-2
+                     text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {saving
-            ? <Loader2 size={13} className="animate-spin" />
-            : <Camera size={13} />
+            ? <Loader2 size={14} className="animate-spin" />
+            : <Camera size={14} />
           }
         </button>
       </div>
 
       {/* Snapshot list */}
       {snapshots.length === 0 && (
-        <p className="text-xs text-slate-600 px-1">No snapshots yet</p>
+        <p className="text-xs text-ink-faint px-1">No snapshots yet</p>
       )}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {snapshots.map(s => (
           <div
             key={s.id}
-            className="flex items-center gap-1 bg-slate-700/60 border border-slate-700 rounded px-2 py-1.5"
+            className="flex items-center gap-1 bg-surface border border-line rounded-lg px-2.5 py-1.5"
           >
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-slate-200 truncate font-medium">{s.name}</p>
-              <p className="text-xs text-slate-500">{fmt(s.created_at)}</p>
+              <p className="text-xs text-ink truncate font-medium">{s.name}</p>
+              <p className="text-xs text-ink-faint">{fmt(s.created_at)}</p>
             </div>
             <button
               onClick={() => restore(s.id)}
               disabled={!!restoring}
               title="Restore"
-              className="p-1 text-slate-400 hover:text-green-400 disabled:opacity-40"
+              className="px-2 py-1 rounded-md text-xs font-medium text-ink-muted hover:text-accent-ink
+                         hover:bg-accent-soft disabled:opacity-40 transition-colors inline-flex items-center gap-1"
             >
               {restoring === s.id
-                ? <Loader2 size={13} className="animate-spin" />
-                : <RotateCcw size={13} />
+                ? <Loader2 size={12} className="animate-spin" />
+                : <RotateCcw size={12} />
               }
+              Restore
             </button>
             <button
               onClick={() => del(s.id)}
               title="Delete"
-              className="p-1 text-slate-400 hover:text-red-400"
+              className="p-1 text-ink-faint hover:text-danger transition-colors"
             >
               <Trash2 size={13} />
             </button>

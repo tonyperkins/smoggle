@@ -23,8 +23,8 @@ export function useTarget() { return useContext(TargetContext) }
 
 function Spinner() {
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-      <span className="text-slate-500 text-sm animate-pulse">Loading Smoggle…</span>
+    <div className="min-h-screen bg-bg flex items-center justify-center">
+      <span className="text-ink-faint text-sm animate-pulse">Loading Smoggle…</span>
     </div>
   )
 }
@@ -35,6 +35,19 @@ export default function App() {
   const [loaded, setLoaded]               = useState(false)
   // Declared macOS support matrix (from the backend); empty => assume supported.
   const [supportedMacos, setSupportedMacos] = useState(null)
+
+  // Light/dark theme — applied to <html> and persisted. Default dark (cockpit).
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('smoggle-theme') === 'light' ? 'light' : 'dark' }
+    catch { return 'dark' }
+  })
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('dark', theme === 'dark')
+    root.classList.toggle('light', theme === 'light')
+    try { localStorage.setItem('smoggle-theme', theme) } catch {}
+  }, [theme])
+  const toggleTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'))
 
   // Load target list once on mount
   useEffect(() => {
@@ -78,7 +91,7 @@ export default function App() {
   if (!loaded) return <Spinner />
 
   return (
-    <TargetContext.Provider value={{ targets, setTargets, activeTargetId, setActiveTargetId, supportedMacos, isMacosSupported }}>
+    <TargetContext.Provider value={{ targets, setTargets, activeTargetId, setActiveTargetId, supportedMacos, isMacosSupported, theme, toggleTheme }}>
       <BrowserRouter>
         <Routes>
           {/* First-run: redirect to /setup if no targets configured */}
