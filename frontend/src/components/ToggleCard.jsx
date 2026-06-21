@@ -1,64 +1,78 @@
 /**
- * ToggleCard.jsx — Full toggle card per SPEC.md.
+ * ToggleCard.jsx — a background-service card.
  *
- * Badges: ON/OFF chip · impact (HIGH/MEDIUM/LOW/POSITIVE) · danger (CAUTION/DANGER)
- *         Apple default chip · ⚡ Restart Required with restart_note tooltip text
- * Toggle switch: optimistic, 150ms transition, reverts on failure
+ * De-noised: an impact meter + clean ON/OFF state lead, with restart / security /
+ * "breaks X" shown as small flags only when they apply. Ollama gets a Required
+ * chip, High Power Mode a Boost chip. Toggle switch is optimistic and reverts
+ * on failure.
  */
 import React, { useState } from 'react'
-import { Zap, AlertTriangle, ShieldAlert } from 'lucide-react'
+import { RotateCw, Shield, AlertTriangle } from 'lucide-react'
 
-// ── Impact badge helpers ──────────────────────────────────────────────────────
-function impactMeta(impact = '') {
-  if (impact.startsWith('HIGH'))     return { label: 'HIGH',     cls: 'bg-red-950   border-red-800   text-red-300'   }
-  if (impact.startsWith('CRITICAL')) return { label: 'CRITICAL', cls: 'bg-red-950   border-red-800   text-red-300'   }
-  if (impact.startsWith('LOW-MED') || impact.startsWith('LOW-MEDIUM'))
-                                     return { label: 'LOW‑MED', cls: 'bg-amber-950 border-amber-800 text-amber-300' }
-  if (impact.startsWith('MEDIUM'))   return { label: 'MEDIUM',   cls: 'bg-amber-950 border-amber-800 text-amber-300' }
-  if (impact.startsWith('POSITIVE')) return { label: 'POSITIVE', cls: 'bg-green-950 border-green-800 text-green-300' }
-  if (impact.startsWith('LOW'))      return { label: 'LOW',      cls: 'bg-blue-950  border-blue-800  text-blue-300'  }
-  return                                    { label: impact.slice(0, 8), cls: 'bg-slate-700 border-slate-600 text-slate-300' }
+// Toggles whose OFF state weakens the Mac's security posture.
+const SECURITY_REDUCING = new Set(['auto_updates', 'location_services'])
+// Per-toggle consequence notes worth flagging on the card.
+const BREAK_NOTE = { mdns: 'Breaks AirDrop', app_nap: 'May stall apps' }
+
+// impact string -> a 3-segment meter + plain label
+function impactMeter(impact = '') {
+  const i = impact.toUpperCase()
+  if (i.startsWith('HIGH') || i.startsWith('CRITICAL')) return { segments: 3, label: 'High impact' }
+  if (i.startsWith('MEDIUM') || i.startsWith('LOW-MED')) return { segments: 2, label: 'Medium impact' }
+  return { segments: 1, label: 'Low impact' }
 }
 
-// ── Restart Required badge with tooltip showing full restart_note text ────────
-function RestartBadge({ note }) {
+function ImpactMeter({ impact }) {
+  const { segments, label } = impactMeter(impact)
   return (
-    <span className="relative group inline-flex items-center gap-1 cursor-help">
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border
-                       bg-yellow-950 border-yellow-700 text-yellow-400 text-xs font-medium">
-        <Zap size={10} className="flex-shrink-0" />
-        Restart required
+    <span className="inline-flex items-center gap-2">
+      <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+        {[0, 1, 2].map(n => (
+          <span
+            key={n}
+            className={`w-3.5 h-1.5 rounded-sm ${n < segments ? 'bg-accent' : 'bg-line'}`}
+          />
+        ))}
       </span>
-      {/* Tooltip — contains the full restart_note text from the toggle definition */}
-      <span
-        className="pointer-events-none absolute bottom-full left-0 mb-2 z-20
-                   w-56 px-3 py-2 text-xs rounded-lg shadow-xl
-                   bg-slate-700 border border-slate-600 text-slate-200 leading-relaxed
-                   opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-      >
-        {note || 'Restart required for this change to take effect.'}
-      </span>
+      <span className="text-xs text-ink-muted">{label}</span>
     </span>
   )
 }
 
-// ── Toggle switch ─────────────────────────────────────────────────────────────
-function ToggleSwitch({ isOn, pending, onToggle, name }) {
+function Flag({ icon: Icon, label, tone = 'muted', title }) {
+  const cls = tone === 'warn' ? 'text-warn' : 'text-ink-muted'
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs ${cls}`} title={title}>
+      <Icon size={11} className="flex-shrink-0" />
+      {label}
+    </span>
+  )
+}
+
+function Chip({ label }) {
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                     bg-accent-soft text-accent-ink">
+      {label}
+    </span>
+  )
+}
+
+function ToggleSwitch({ isOn, pending, disabled, onToggle, name }) {
   return (
     <button
       onClick={onToggle}
-      disabled={pending}
+      disabled={pending || disabled}
       aria-label={`${isOn ? 'Disable' : 'Enable'} ${name}`}
       className={[
-        'relative flex-shrink-0 w-11 h-6 rounded-full overflow-hidden',
-        'transition-colors duration-150 focus:outline-none',
-        isOn ? 'bg-green-500' : 'bg-slate-600',
-        pending ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+        'relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-150',
+        isOn ? 'bg-accent' : 'bg-surface-3',
+        (pending || disabled) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
       ].join(' ')}
     >
       <span
         className={[
-          'absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow',
+          'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm',
           'transition-transform duration-150',
           isOn ? 'translate-x-5' : 'translate-x-0',
         ].join(' ')}
@@ -66,12 +80,6 @@ function ToggleSwitch({ isOn, pending, onToggle, name }) {
     </button>
   )
 }
-
-// ── Main component ────────────────────────────────────────────────────────────
-// Toggles whose OFF state weakens the Mac's security posture. Flagged in the UI
-// so disabling them is a deliberate choice. (The registry's impact/danger fields
-// describe performance, not security, so this is tracked here.)
-const SECURITY_REDUCING = new Set(['auto_updates', 'location_services'])
 
 export default function ToggleCard({ toggle, onApply }) {
   const [pending, setPending] = useState(false)
@@ -81,7 +89,6 @@ export default function ToggleCard({ toggle, onApply }) {
   const isOn = liveState === 'on'
   const isUnsupported = liveState === 'unsupported'
   const isUnknown = !liveState || liveState === 'unknown' || liveState === 'error'
-  const impact = impactMeta(toggle.impact ?? '')
   const reducesSecurity = SECURITY_REDUCING.has(toggle.id)
 
   async function handleToggle() {
@@ -95,106 +102,80 @@ export default function ToggleCard({ toggle, onApply }) {
     setPending(false)
   }
 
+  const flags = []
+  if (toggle.requires_restart) {
+    flags.push({ icon: RotateCw, label: 'Restart', tone: 'muted', title: toggle.restart_note || undefined })
+  }
+  if (reducesSecurity) {
+    flags.push({ icon: Shield, label: 'Security', tone: 'warn',
+      title: "Turning this off reduces this Mac's security" })
+  }
+  if (BREAK_NOTE[toggle.id]) {
+    flags.push({ icon: AlertTriangle, label: BREAK_NOTE[toggle.id], tone: 'warn' })
+  }
+
+  const stateLabel = isUnsupported ? 'N/A' : isUnknown ? '? unknown' : isOn ? 'ON' : 'OFF'
+  const stateCls = isUnsupported || isUnknown
+    ? 'text-ink-faint italic'
+    : isOn ? 'text-accent-ink' : 'text-ink-faint'
+
   return (
     <div className={[
-      'bg-slate-800 border rounded-lg p-4 flex flex-col gap-3',
-      'transition-all duration-150',
-      isUnsupported ? 'border-slate-700/40 opacity-50' :
-      toggle.danger === 2 ? 'border-red-900/60' : 'border-slate-700',
+      'rounded-xl border bg-surface p-4 flex flex-col gap-3 transition-colors',
+      isUnsupported ? 'border-line/60 opacity-60' : 'border-line',
     ].join(' ')}>
 
-      {/* ── Top row: name + toggle switch ── */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-slate-100 text-sm leading-tight">{toggle.name}</p>
-          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{toggle.description}</p>
+      {/* Title + switch */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-ink text-sm leading-tight">{toggle.name}</p>
+            <code className="font-mono text-[11px] text-ink-faint bg-surface-2 rounded px-1.5 py-0.5">
+              {toggle.id}
+            </code>
+          </div>
+          <p className="text-xs text-ink-muted mt-1 leading-relaxed">{toggle.description}</p>
         </div>
-        <div className="flex-shrink-0">
-          <ToggleSwitch isOn={isOn} pending={pending || isUnknown || isUnsupported} onToggle={handleToggle} name={toggle.name} />
-        </div>
+        <ToggleSwitch
+          isOn={isOn}
+          pending={pending}
+          disabled={isUnknown || isUnsupported}
+          onToggle={handleToggle}
+          name={toggle.name}
+        />
       </div>
 
-      {/* ── Badge row ── */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-
-        {/* ON / OFF state chip */}
+      {/* Meter / chip + flags + state */}
+      <div className="flex items-end justify-between gap-3 mt-auto pt-1">
+        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0">
+          {toggle.id === 'ollama' ? <Chip label="Required" />
+            : toggle.id === 'high_power_mode' ? <Chip label="Boost" />
+            : <ImpactMeter impact={toggle.impact} />}
+          {flags.map((f, i) => <Flag key={i} {...f} />)}
+        </div>
         <span
           title={isUnknown && !isUnsupported
             ? "Couldn't read this toggle's state — it may behave differently on this macOS version"
             : undefined}
-          className={[
-            'text-xs font-bold px-2 py-0.5 rounded border',
-            isUnsupported ? 'bg-slate-700 border-slate-700 text-slate-600 italic' :
-            isUnknown     ? 'bg-slate-700 border-slate-600 text-slate-500 italic'
-              : isOn      ? 'bg-green-950 border-green-700 text-green-300'
-                          : 'bg-slate-700 border-slate-600 text-slate-400',
-          ].join(' ')}
+          className={`text-xs font-bold flex-shrink-0 ${stateCls}`}
         >
-          {isUnsupported ? 'N/A' : isUnknown ? '? unknown' : isOn ? 'ON' : 'OFF'}
+          {stateLabel}
         </span>
-
-        {/* Impact badge */}
-        <span className={`text-xs font-medium px-2 py-0.5 rounded border ${impact.cls}`}>
-          {impact.label}
-        </span>
-
-        {/* Danger badge */}
-        {toggle.danger === 1 && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded border
-                           bg-amber-950 border-amber-700 text-amber-300">
-            <AlertTriangle size={10} className="flex-shrink-0" />
-            CAUTION
-          </span>
-        )}
-        {toggle.danger === 2 && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded border
-                           bg-red-950 border-red-700 text-red-300">
-            <ShieldAlert size={10} className="flex-shrink-0" />
-            DANGER
-          </span>
-        )}
-
-        {/* Security-reducing badge */}
-        {reducesSecurity && (
-          <span
-            title="Turning this off reduces this Mac's security"
-            className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded border
-                       bg-orange-950 border-orange-700 text-orange-300"
-          >
-            <ShieldAlert size={10} className="flex-shrink-0" />
-            SECURITY
-          </span>
-        )}
-
-        {/* Apple default chip */}
-        <span className="text-xs text-slate-500 border border-slate-700 px-2 py-0.5 rounded">
-          Default: {(toggle.default_state ?? 'on').toUpperCase()}
-        </span>
-
-        {/* ⚡ Restart Required — tooltip contains full restart_note text */}
-        {toggle.requires_restart && toggle.restart_note && (
-          <RestartBadge note={toggle.restart_note} />
-        )}
       </div>
 
-      {/* ── Security caution when currently disabled ── */}
+      {/* Security caution when disabled */}
       {reducesSecurity && !isOn && !isUnsupported && !isUnknown && (
-        <p className="text-xs text-orange-300/90 bg-orange-950/40 border border-orange-900 rounded px-2 py-1 flex items-start gap-1.5">
-          <ShieldAlert size={12} className="flex-shrink-0 mt-0.5" />
-          This is off — it reduces this Mac's security. Re-enable unless you intend to keep it disabled.
+        <p className="text-xs text-warn bg-warn-soft border border-warn/30 rounded-lg px-2 py-1 flex items-start gap-1.5">
+          <Shield size={12} className="flex-shrink-0 mt-0.5" />
+          This is off — it reduces this Mac's security. Re-enable unless you mean to keep it disabled.
         </p>
       )}
 
-      {/* ── Error toast ── */}
+      {/* Error toast */}
       {toast && (
-        <p className="text-xs text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1 font-mono truncate">
+        <p className="text-xs text-danger bg-danger-soft border border-danger/30 rounded-lg px-2 py-1 font-mono truncate">
           {toast}
         </p>
-      )}
-
-      {/* ── Last changed ── */}
-      {toggle.last_changed && (
-        <p className="text-xs text-slate-600">Changed {toggle.last_changed}</p>
       )}
     </div>
   )

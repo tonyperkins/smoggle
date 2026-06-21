@@ -78,3 +78,21 @@ export const PROFILES_FRONTEND = {
     toggles: buildProfileToggles(HYPER_IDS),
   },
 }
+
+/**
+ * Best-effort: which profile (if any) the current live toggle states match.
+ * Display-only — used to mark a profile ACTIVE. Toggles whose live state is
+ * unknown/unsupported are ignored. Most-specific profile wins. `liveById`
+ * maps toggle id -> 'on' | 'off' | other.
+ */
+export function detectActiveProfile(liveById) {
+  for (const name of ['hyper', 'max', 'performance', 'default']) {
+    const matches = PROFILES_FRONTEND[name].toggles.every(t => {
+      const s = liveById[t.id]
+      if (s !== 'on' && s !== 'off') return true
+      return s === t.to
+    })
+    if (matches) return name
+  }
+  return null
+}
