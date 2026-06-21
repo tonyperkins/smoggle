@@ -281,6 +281,12 @@ TOGGLES = [
     "restart_note": "",
     "profiles": ["hyper"],
     "apple_silicon_only": True,
+    # macOS 14 (Sonoma) moved Do Not Disturb into the Focus framework, so the
+    # old com.apple.ncprefs/doNotDisturb defaults no-op (and `dnd_prefs -dict-add`
+    # warns: "Value for key dnd_prefs is not a dictionary"). Report unsupported on
+    # 14+ — the toggle shows N/A and profiles skip it — rather than appearing to
+    # work. Still functions on macOS < 14.
+    "cmd_supported": "major=$(sw_vers -productVersion | cut -d. -f1); [ \"$major\" -lt 14 ] 2>/dev/null && echo 1 || echo 0",
     "cmd_off": "defaults write com.apple.notificationcenterui doNotDisturb -bool true; defaults write com.apple.ncprefs dnd_prefs -dict-add userPref -int 1; echo done",
     "cmd_on": "defaults write com.apple.notificationcenterui doNotDisturb -bool false; defaults write com.apple.ncprefs dnd_prefs -dict-add userPref -int 0; echo done",
     "cmd_status": "val=$(defaults read com.apple.notificationcenterui doNotDisturb 2>/dev/null); [ \"$val\" = '1' ] && echo 0 || echo 1",

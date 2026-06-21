@@ -263,8 +263,8 @@ export default function ProfileModal({ profileName, targetId, onClose, onApplied
               title={isHyper && !hyperConfirmed ? 'Type HYPER to confirm' : undefined}
               className={[
                 'px-4 py-1.5 text-sm font-semibold rounded-lg text-white',
-                'transition-colors duration-150 flex items-center gap-2',
-                meta.btnCls,
+                'transition-opacity duration-150 flex items-center gap-2',
+                isHyper ? 'bg-danger hover:opacity-90' : 'bg-accent hover:opacity-90',
                 !canApply ? 'opacity-40 cursor-not-allowed' : '',
               ].join(' ')}
             >

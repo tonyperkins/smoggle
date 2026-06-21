@@ -140,9 +140,9 @@ export default function ResourceStrip({ stats, targetId }) {
 
       {/* Detail */}
       {expanded && (
-        <div className="border-t border-line pt-3.5 mt-1 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="border-t border-line pt-3.5 mt-1 flex flex-col gap-5">
           {/* CPU + memory pressure */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="space-y-1.5">
               <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1">CPU</p>
               <CpuBar label="User" value={cpu_user} />
@@ -159,7 +159,7 @@ export default function ResourceStrip({ stats, targetId }) {
             </div>
           </div>
 
-          {/* Top processes */}
+          {/* Top processes — full panel width */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Top processes</p>

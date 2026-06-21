@@ -28,14 +28,16 @@ export default function ProfileSidebar({ targetId, toggles = [], onPick }) {
           return (
             <button
               key={p.name}
-              onClick={() => onPick?.(p.name)}
+              onClick={() => !isActive && onPick?.(p.name)}
               disabled={!targetId}
+              aria-current={isActive ? 'true' : undefined}
+              title={isActive ? 'Already active' : `Apply ${p.label} profile`}
               className={[
                 'w-full text-left rounded-xl border px-3 py-2.5 transition-colors',
                 'flex items-center gap-2.5',
                 'disabled:opacity-40 disabled:cursor-not-allowed',
                 isActive
-                  ? 'border-accent/50 bg-accent-soft'
+                  ? 'border-accent/50 bg-accent-soft cursor-default'
                   : 'border-line bg-surface hover:bg-surface-2',
               ].join(' ')}
             >
