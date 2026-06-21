@@ -2,8 +2,9 @@
 main.py — FastAPI application entry point for Smoggle.
 """
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
 
@@ -66,4 +67,19 @@ def health():
 _default_static = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 static_dir = os.environ.get("STATIC_DIR", _default_static)
 if os.path.isdir(static_dir):
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+    _index_html = os.path.join(static_dir, "index.html")
+    _assets_dir = os.path.join(static_dir, "assets")
+    if os.path.isdir(_assets_dir):
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
+
+    # SPA fallback: serve a real file if one exists (favicon, fonts, etc.),
+    # otherwise return index.html so client-side routes like /settings work on
+    # direct load / refresh. Registered last, so API routers and /health win.
+    @app.get("/{full_path:path}")
+    async def spa(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        candidate = os.path.join(static_dir, full_path)
+        if full_path and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        return FileResponse(_index_html)
