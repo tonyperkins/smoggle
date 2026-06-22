@@ -2,7 +2,7 @@
  * Dashboard.jsx — header → [profiles/snapshots sidebar | status hero + live
  * resources + background-services grid].
  */
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import {
   Settings, BookOpen, History as HistoryIcon, AlertCircle, Loader2,
@@ -40,7 +40,13 @@ export default function Dashboard() {
   const activeTarget = targets.find(t => t.id === activeTargetId)
   const macosUnsupported =
     activeTarget?.macos_version && !isMacosSupported(activeTarget.macos_version)
-  const [paused, setPaused] = useState(false)
+  const [paused, setPaused] = useState(() => {
+    try { return localStorage.getItem(`smoggle-paused-${activeTargetId}`) === 'true' }
+    catch { return false }
+  })
+  useEffect(() => {
+    try { localStorage.setItem(`smoggle-paused-${activeTargetId}`, String(paused)) } catch {}
+  }, [paused, activeTargetId])
   const [filter, setFilter] = useState('')
   const [profileToApply, setProfileToApply] = useState(null)
   const sseStats = useSSE(activeTargetId, paused)
