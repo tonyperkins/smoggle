@@ -4,6 +4,17 @@ AI Performance Toggle Dashboard for macOS Apple Silicon.
 
 Remotely toggle macOS system services via SSH to maximize MLX/Ollama inference performance. Runs on a Linux/Docker host and controls target Macs over SSH.
 
+**Table of Contents**
+
+- [Background](#background)
+- [Supported platforms](#supported-platforms)
+- [Quick Start](#quick-start)
+- [Screenshots](#screenshots)
+- [Development (without Docker)](#development-without-docker)
+- [Architecture](#architecture)
+- [Toggle Profiles](#toggle-profiles)
+- [Notes](#notes)
+
 ---
 
 ## Background
