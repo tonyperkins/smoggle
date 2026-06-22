@@ -56,10 +56,8 @@ jobs:
       # upgrade — tracked separately; see SECURITY.md "Known issues"):
       #  - GHSA-2j2x-hqr9-3h42 (react-router open redirect): fixed in v7. Low
       #    impact for an internal admin SPA.
-      #  - GHSA-fx2h-pf6j-xcff (vite): fixed in v8. Build-time-only devDependency,
-      #    not present in the shipped static bundle — no production exposure.
       - name: npm audit (high+, allowlisted)
-        run: npx --yes audit-ci@^7 --high --allowlist GHSA-2j2x-hqr9-3h42 GHSA-fx2h-pf6j-xcff
+        run: npx --yes audit-ci@^7 --high --allowlist GHSA-2j2x-hqr9-3h42
 
   secrets:
     name: Secret scan

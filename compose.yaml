@@ -24,6 +24,9 @@ services:
       - FOWNER
       - SETUID
       - SETGID
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7420/health"]
