@@ -122,6 +122,28 @@ Dashboard auth is handled by the app itself (no proxy auth needed). See
 
 ---
 
+## Screenshots
+
+### Dashboard
+![Dashboard](images/smoggle.perkinslab.com_1.png)
+
+### System Resources
+![System Resources](images/smoggle.perkinslab.com_2.png)
+
+### Target Mac Settings
+![Target Mac Settings](images/smoggle.perkinslab.com_3.png)
+
+### Setup Guide
+![Setup Guide](images/smoggle.perkinslab.com_4.png)
+
+### History
+![History](images/smoggle.perkinslab.com_5.png)
+
+### Dark Mode
+![Dark Mode](images/smoggle.perkinslab.com_6.png)
+
+---
+
 ## Development (without Docker)
 
 ### Backend
