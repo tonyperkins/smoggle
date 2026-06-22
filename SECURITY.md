@@ -80,8 +80,6 @@ every PR. A few dependency advisories are deliberately allowlisted there because
 their only fix is a breaking major upgrade or no fix exists yet. All are low
 real-world risk given the private-network trust boundary, and each is tracked:
 
-- **FastAPI / starlette** (several CVEs): fixed only by a FastAPI major upgrade.
-  Re-audit after bumping. ([#7](../../issues/7))
 - **paramiko** (`CVE-2026-44405`): no fixed version published yet. Revisit when
   upstream ships a fix. ([#10](../../issues/10))
 

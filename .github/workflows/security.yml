@@ -21,20 +21,10 @@ jobs:
         run: pip install pip-audit bandit
       # Allowlisted CVEs (deliberate, tracked — see SECURITY.md "Known issues"):
       #  - CVE-2026-44405 (paramiko): no fixed version published yet.
-      #  - starlette CVEs: fixed only by a FastAPI major upgrade (separate task).
-      #    On a trusted private network these are low real-world risk (DoS /
-      #    multipart / form parsing). Re-audit when FastAPI is bumped.
       - name: pip-audit (backend dependencies)
         run: |
           pip-audit -r backend/requirements.txt \
-            --ignore-vuln CVE-2026-44405 \
-            --ignore-vuln PYSEC-2026-161 \
-            --ignore-vuln CVE-2024-47874 \
-            --ignore-vuln CVE-2025-54121 \
-            --ignore-vuln CVE-2026-48818 \
-            --ignore-vuln CVE-2026-48817 \
-            --ignore-vuln CVE-2026-54283 \
-            --ignore-vuln CVE-2026-54282
+            --ignore-vuln CVE-2026-44405
       - name: bandit (Python SAST)
         run: bandit -r backend -ll -ii
 
