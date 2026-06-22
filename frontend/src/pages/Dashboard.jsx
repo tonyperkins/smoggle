@@ -3,7 +3,7 @@
  * resources + background-services grid].
  */
 import React, { useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import {
   Settings, BookOpen, History as HistoryIcon, AlertCircle, Loader2,
   PauseCircle, PlayCircle, Sun, Moon, Search, Zap,

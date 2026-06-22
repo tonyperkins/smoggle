@@ -6,3 +6,5 @@ bcrypt==4.1.3
 python-dotenv==1.2.2
 sse-starlette==2.1.0
 psutil==5.9.8
+pytest==8.3.4
+httpx==0.27.2

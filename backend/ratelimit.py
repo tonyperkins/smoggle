@@ -4,11 +4,20 @@ ratelimit.py — tiny in-process token-bucket rate limiter keyed by client IP.
 Smoggle runs as a single container on a trusted private network, so a per-process
 in-memory limiter is sufficient (no shared store needed). Used to blunt brute
 force against auth and to cap expensive SSH probe endpoints.
+
+When deployed behind a reverse proxy (e.g. Caddy, nginx, Tailscale), set
+SMOGGLE_TRUST_FORWARDED=true so client_ip() reads the X-Forwarded-For header
+instead of the proxy's IP — otherwise all traffic appears to come from one IP
+and rate limiting is ineffective. Only enable this when you trust the proxy to
+set the header correctly; never enable it if Smoggle is directly exposed.
 """
+import os
 import threading
 import time
 
 from fastapi import HTTPException, Request, status
+
+_TRUST_FORWARDED = os.getenv("SMOGGLE_TRUST_FORWARDED", "").lower() in ("true", "1", "yes")
 
 
 class RateLimiter:
@@ -38,6 +47,15 @@ class RateLimiter:
 
 
 def client_ip(request: Request) -> str:
+    """Return the client IP for rate-limiting keying.
+
+    When SMOGGLE_TRUST_FORWARDED is enabled, reads the leftmost (original
+    client) IP from X-Forwarded-For. Falls back to the direct connection IP.
+    """
+    if _TRUST_FORWARDED and request:
+        xff = request.headers.get("x-forwarded-for", "")
+        if xff:
+            return xff.split(",")[0].strip()
     return request.client.host if request and request.client else "unknown"
 
 

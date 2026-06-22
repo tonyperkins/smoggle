@@ -2,7 +2,7 @@
  * History.jsx — Toggle change log with filters by toggle ID, profile, target.
  */
 import React, { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ArrowLeft, Filter, CheckCircle2, XCircle, Loader2, RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { useTarget } from '../App.jsx'
 

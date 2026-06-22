@@ -82,8 +82,6 @@ real-world risk given the private-network trust boundary, and each is tracked:
 
 - **FastAPI / starlette** (several CVEs): fixed only by a FastAPI major upgrade.
   Re-audit after bumping. ([#7](../../issues/7))
-- **react-router** (`GHSA-2j2x-hqr9-3h42`, open redirect): fixed in react-router
-  v7 (breaking). ([#8](../../issues/8))
 - **paramiko** (`CVE-2026-44405`): no fixed version published yet. Revisit when
   upstream ships a fix. ([#10](../../issues/10))
 
@@ -91,12 +89,8 @@ real-world risk given the private-network trust boundary, and each is tracked:
 
 Deferred hardening, tracked as issues:
 
-- Serve enrollment over HTTPS / add an integrity check — the `curl | sudo sh`
-  step is MITM-able over plain HTTP. ([#11](../../issues/11))
 - App-level auth defense-in-depth, replacing the Basic Auth stopgap (OIDC /
   Tailscale / signed forward-auth header). ([#12](../../issues/12))
-- Honor `X-Forwarded-For` for client IP in rate limiting behind a proxy.
-  ([#14](../../issues/14))
 - **Phase C (future epic):** a signed macOS agent for confined privilege +
   mutual auth, superseding the SSH-key + helper model. ([#15](../../issues/15))
 

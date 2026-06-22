@@ -1,6 +1,8 @@
 """
 routers/setup.py — SSH connection test and passwordless sudo test.
 """
+import hashlib
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 from sqlmodel import Session
@@ -42,6 +44,11 @@ async def identity_public_key():
 # root-owned smoggle-helper and a narrow sudoers grant, enabling privileged
 # toggles. $SUDO_USER lets the sudo path target the real user, not root.
 # Tokens (@@…@@) are substituted server-side; shell ${…} stays literal.
+#
+# For integrity verification, a SHA-256 checksum of the generated script is
+# served at /api/enroll.sh.sha256. The SetupGuide shows a download-verify-
+# execute workflow so the user can confirm the script wasn't tampered with
+# in transit (important over plain HTTP; HTTPS makes this unnecessary).
 _ENROLL_TEMPLATE = """#!/bin/sh
 set -e
 
@@ -93,6 +100,17 @@ fi
 """
 
 
+def _generate_enroll_script() -> str:
+    """Render the enrollment script with all tokens substituted."""
+    return (
+        _ENROLL_TEMPLATE
+        .replace("@@KEY@@", ssh_identity.get_public_key())
+        .replace("@@HELPER_SCRIPT@@", generate_helper_script().rstrip("\n"))
+        .replace("@@HELPER_PATH@@", HELPER_PATH)
+        .replace("@@SUDOERS_PATH@@", SUDOERS_PATH)
+    )
+
+
 @public_router.get("/enroll.sh", response_class=PlainTextResponse)
 async def enroll_script():
     """Single onboarding script for a target Mac.
@@ -102,13 +120,19 @@ async def enroll_script():
     sudoers grant for it. No secret leaves the backend — only the public key and
     the (non-sensitive) helper allowlist are embedded.
     """
-    return (
-        _ENROLL_TEMPLATE
-        .replace("@@KEY@@", ssh_identity.get_public_key())
-        .replace("@@HELPER_SCRIPT@@", generate_helper_script().rstrip("\n"))
-        .replace("@@HELPER_PATH@@", HELPER_PATH)
-        .replace("@@SUDOERS_PATH@@", SUDOERS_PATH)
-    )
+    return _generate_enroll_script()
+
+
+@public_router.get("/enroll.sh.sha256", response_class=PlainTextResponse)
+async def enroll_script_checksum():
+    """SHA-256 checksum of the enrollment script for out-of-band verification.
+
+    Compare this value against `shasum -a 256` of the downloaded script before
+    executing it, especially when serving over plain HTTP. The dashboard
+    SetupGuide shows the verify-then-execute workflow.
+    """
+    script = _generate_enroll_script()
+    return hashlib.sha256(script.encode("utf-8")).hexdigest()
 
 
 @router.get("/compat")

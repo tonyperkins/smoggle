@@ -12,7 +12,7 @@
  *   isMacosSupported(version) — true if a macOS version is in the tested matrix
  */
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
 import Dashboard  from './pages/Dashboard.jsx'
 import Settings   from './pages/Settings.jsx'
 import SetupGuide from './pages/SetupGuide.jsx'

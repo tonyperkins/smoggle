@@ -2,7 +2,7 @@
  * SetupGuide.jsx — Numbered setup steps with copy-to-clipboard and live test buttons.
  */
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ArrowLeft, Copy, Check, Wifi, ShieldCheck, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { useTarget } from '../App.jsx'
 

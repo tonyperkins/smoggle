@@ -2,7 +2,7 @@
  * Settings.jsx — Target Mac management: add wizard, remove, connection/sudo test.
  */
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ArrowLeft, Plus, Trash2, Wifi, ShieldCheck, CheckCircle2, XCircle, Loader2, ChevronDown, ChevronUp, Pencil, Copy, Check } from 'lucide-react'
 import { useTarget } from '../App.jsx'
 
